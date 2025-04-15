@@ -13,17 +13,24 @@ ifcb_read_mat(file_path)
 A list containing the MATLAB variables.
 }
 \description{
-This function reads a MATLAB .mat file using a Python function via \code{reticulate}.
+This function reads a MATLAB \code{.mat} file using a Python function via \code{reticulate}.
 }
 \details{
-This function requires a Python interpreter with \code{SciPy} installed.
+Python must be installed to use this function. The required python packages can be installed in a virtual environment using \code{ifcb_py_install()}.
 
 This function requires a python interpreter to be installed.
-The required python packages can be installed in a virtual environment using \code{ifcb_py_install}.
+The required python packages can be installed in a virtual environment using \code{ifcb_py_install()}.
 }
 \examples{
 \dontrun{
-data <- read_mat_file_r("C:/data/sample.mat")
+# Initialize Python environment and install required packages
+ifcb_py_install()
+
+# Example .mat file included in the package
+mat_file <- system.file("exdata/example.mat", package = "iRfcb")
+
+# Read mat file using Python
+data <- ifcb_read_mat(mat_file)
 }
 
 }

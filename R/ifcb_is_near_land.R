@@ -1,32 +1,42 @@
 #' Determine if Positions are Near Land
 #'
-#' Determines whether given positions are near land based on a coastline shape file.
-#' The Natural Earth 1:10m land vectors are included as default shapefile in `iRfcb`.
+#' Determines whether given positions are near land based on a land polygon shape file.
+#' The Natural Earth 1:10m land vectors are included as a default shapefile in `iRfcb`.
 #'
 #' @param latitudes Numeric vector of latitudes for positions.
-#' @param longitudes Numeric vector of longitudes for positions.
-#' @param distance Buffer distance in meters around the coastline. Default is 500 m.
-#' @param shape Optional path to a shapefile containing coastline data. If provided,
-#'   the function will use this shapefile instead of the default Natural Earth 1:10m land vectors.
-#'   Using a more detailed shapefile allows for a smaller buffer distance.
-#'   For detailed European coastlines, download polygons from the EEA at
-#'   \url{https://www.eea.europa.eu/data-and-maps/data/eea-coastline-for-analysis-2/gis-data/eea-coastline-polygon}.
-#'   For more detailed world maps, download from Natural Earth at
-#'   \url{https://www.naturalearthdata.com/downloads/10m-physical-vectors/}.
-#' @param crs Coordinate reference system (CRS) to use for positions and output.
+#' @param longitudes Numeric vector of longitudes for positions. Must be the same length as `latitudes`.
+#' @param distance Buffer distance (in meters) from the coastline to consider "near land." Default is 500 meters.
+#' @param shape Optional path to a shapefile (`.shp`) containing coastline data. If provided,
+#'   this file will be used instead of the default Natural Earth 1:10m land vectors.
+#'   A high-resolution shapefile can improve the accuracy of buffer distance calculations.
+#'   Alternatively, you can retrieve a more detailed European coastline automatically by
+#'   setting the `source` argument to `"eea"`.
+#' @param source Character string indicating which default coastline source to use when `shape = NULL`.
+#'   Options are `"ne"` (Natural Earth, default) and `"eea"` (European Environment Agency).
+#'   Ignored if `shape` is provided.
+#' @param crs Coordinate reference system (CRS) to use for input and output.
 #'   Default is EPSG code 4326 (WGS84).
-#' @param utm_zone UTM zone for buffering the coastline. Default is 33 (between 12°E and 18°E, northern hemisphere).
 #' @param remove_small_islands Logical indicating whether to remove small islands from
-#'   the coastline if a custom shapefile is provided. Default is TRUE.
+#'   the coastline. Useful in archipelagos. Default is `TRUE`.
 #' @param small_island_threshold Area threshold in square meters below which islands
-#'   will be considered small and removed, if remove_small_islands is set to TRUE. Default is 2 sqkm.
+#'   will be considered small and removed, if remove_small_islands is set to `TRUE`. Default is 2 square km.
+#' @param plot A boolean indicating whether to plot the points, land polygon and buffer. Default is `FALSE`.
+#' @param utm_zone `r lifecycle::badge("deprecated")`
+#'   This argument is deprecated. UTM zones are now determined automatically based on the longitude of the input positions.
 #'
-#' @return Logical vector indicating whether each position is near land.
+#' @return
+#' If `plot = FALSE` (default), a logical vector is returned indicating whether each position
+#' is near land or not, with `NA` for positions where coordinates are missing.
+#' If `plot = TRUE`, a `ggplot` object is returned showing the land polygon, buffer area,
+#' and position points colored by their proximity to land.
 #'
 #' @details
-#' This function calculates a buffered area around the coastline and checks if
-#' given positions (specified by longitudes and latitudes) are within this buffer
-#' or intersect with land.
+#' This function calculates a buffered area around the coastline using a polygon shapefile and
+#' determines if each input position intersects with this buffer or the landmass itself.
+#' By default, it uses the Natural Earth 1:10m land vector dataset.
+#'
+#' The EEA shapefile is downloaded from \url{https://www.eea.europa.eu/data-and-maps/data/eea-coastline-for-analysis-2/gis-data/eea-coastline-polygon}
+#' when `source = "eea"`.
 #'
 #' @examples
 #' # Define coordinates
@@ -44,93 +54,176 @@ ifcb_is_near_land <- function(latitudes,
                               longitudes,
                               distance = 500,
                               shape = NULL,
+                              source = "ne",
                               crs = 4326,
-                              utm_zone = 33,
                               remove_small_islands = TRUE,
-                              small_island_threshold = 2000000) {
+                              small_island_threshold = 2000000,
+                              plot = FALSE,
+                              utm_zone = deprecated()) {
+
+  stopifnot(length(latitudes) == length(longitudes))
+
+  # Warn the user if utm_zone is used
+  if (lifecycle::is_present(utm_zone)) {
+
+    # Signal the deprecation to the user
+    lifecycle::deprecate_warn("0.5.0", "iRfcb::ifcb_annotate_batch(utm_zone = )",
+                              details = "utm_zone is now calculated from the median longitude of the input coordinates.")
+  }
 
   # Check for NAs in latitudes and longitudes
   na_positions <- is.na(latitudes) | is.na(longitudes)
 
-  # Create a result vector initialized to NA
+  # Assign UTM zones
+  utm_zones <- floor((longitudes + 180) / 6) + 1
+  original_index <- seq_along(latitudes)
+
+  # Create master result vector
   result <- rep(NA, length(latitudes))
 
   # If all positions are NA, return the result early
   if (all(na_positions)) {
+    if (plot) {
+      stop("All positions are NA. No plot can be generated.")
+    }
     return(result)
   }
 
-  # Filter out NA positions for further processing
-  latitudes_filtered <- latitudes[!na_positions]
-  longitudes_filtered <- longitudes[!na_positions]
-
-  utm_epsg <- paste0("epsg:", 32600 + utm_zone)
-
-  # Create a bounding box around the coordinates with a buffer
-  bbox <- st_bbox(c(xmin = min(longitudes_filtered) - 1, xmax = max(longitudes_filtered) + 1,
-                    ymin = min(latitudes_filtered) - 1, ymax = max(latitudes_filtered) + 1),
-                  crs = st_crs(crs))
-
-  # Get coastline
+  # Load land shapefile if not provided
   if (is.null(shape)) {
-    # Directory to extract files
-    exdir <- tempdir()  # Temporary directory
+    source <- match.arg(source, choices = c("ne", "eea"))  # Default source = "ne"
+    exdir <- file.path(tempdir(), paste0("ifcb_is_near_land_", source))
+    if (!dir.exists(exdir)) {
+      dir.create(exdir, recursive = TRUE)
+    }
 
-    # Extract the files
-    unzip(system.file("exdata/ne_10m_land.zip", package = "iRfcb"), exdir = exdir)
+    if (source == "ne") {
+      # Extract the files
+      unzip(system.file("exdata/ne_10m_land.zip", package = "iRfcb"), exdir = exdir)
 
-    # Get coastline and land data within the bounding box
-    land <- st_read(file.path(exdir, "ne_10m_land.shp"), quiet = TRUE)
+      # Get coastline and land data within the bounding box
+      shp_path <- list.files(exdir, pattern = "\\.shp$", full.names = TRUE)[1]
+      land <- st_read(shp_path, quiet = TRUE)
+
+    } else if (source == "eea") {
+      url <- "https://www.eea.europa.eu/data-and-maps/data/eea-coastline-for-analysis-2/gis-data/eea-coastline-polygon/at_download/file"
+      temp_zip <- file.path(exdir, "eea_coastline_polygon.zip")
+
+      if (!file.exists(temp_zip)) {
+        tryCatch({
+          curl::curl_download(url, temp_zip)
+        }, error = function(e) {
+          stop("Could not download EEA coastline data. Please manually download it from:\n",
+               "https://www.eea.europa.eu/data-and-maps/data/eea-coastline-for-analysis-2", "\nThen provide the path to the `.gpkg` or `.shp` file using the `shape` argument.")
+        })
+      }
+      unzip(temp_zip, exdir = exdir)
+      shp_path <- list.files(exdir, pattern = "\\.shp$", full.names = TRUE)[1]
+
+      # Read the shapefile
+      land <- st_read(shp_path, quiet = TRUE)
+      land <- st_transform(land, crs = crs)
+    }
   } else {
     land <- st_read(shape, quiet = TRUE)
     land <- st_transform(land, crs = crs)
   }
 
-  # Check geometry type
-  geom_type <- unique(st_geometry_type(land))
-
-  # Optionally remove small islands based on area threshold
-  if (!is.null(shape) && remove_small_islands && any(st_geometry_type(land) %in% c("POLYGON", "MULTIPOLYGON"))) {
-    land$area <- st_area(land)
-
-    small_islands <- which(as.numeric(land$area) < small_island_threshold)
-    land <- land[-small_islands, ]
-
-    # Remove the 'area' attribute
+  # Remove small islands if requested
+  if (remove_small_islands && any(sf::st_geometry_type(land) %in% c("POLYGON", "MULTIPOLYGON"))) {
+    land$area <- sf::st_area(land)
+    land <- land[as.numeric(land$area) >= small_island_threshold, ]
     land$area <- NULL
   }
 
-  # Filter land data to include only the region within the bounding box
-  land <- suppressWarnings(st_intersection(land, st_as_sfc(bbox)))
+  # Filter out NA coordinates
+  valid <- !is.na(latitudes) & !is.na(longitudes)
+  coords <- data.frame(
+    index = original_index[valid],
+    lat = latitudes[valid],
+    lon = longitudes[valid],
+    utm_zone = utm_zones[valid]
+  )
 
-  # Cleanup and transform land data
-  land <- land %>% st_union() %>% st_make_valid() %>% st_wrap_dateline()
-  land_utm <- st_transform(land, crs = utm_epsg)
+  # Process each UTM zone subset
+  for (zone in unique(coords$utm_zone)) {
+    subset <- coords[coords$utm_zone == zone, ]
 
-  # Create a buffered shape around the coastline in meters (specified distance)
-  l_buffer <- st_buffer(land_utm, dist = distance)
+    # Create a bounding box around the coordinates with a buffer
+    bbox <- st_bbox(c(xmin = min(subset$lon) - 1, xmax = max(subset$lon) + 1,
+                      ymin = min(subset$lat) - 1, ymax = max(subset$lat) + 1),
+                    crs = st_crs(crs))
 
-  # Apply st_wrap_dateline only if the CRS is geographic
-  if (st_crs(l_buffer)$epsg == crs) {
-    l_buffer <- l_buffer %>% st_wrap_dateline()
+    # Filter land data to include only the region within the bounding box
+    land_crop <- suppressWarnings(st_intersection(land, st_as_sfc(bbox)))
+
+    # Cleanup and transform land data
+    land_crop <- land_crop %>% st_union() %>% st_make_valid() %>% st_wrap_dateline()
+
+    # Create sf points
+    points_wgs <- sf::st_as_sf(subset, coords = c("lon", "lat"), crs = crs)
+
+    epsg_code <- if (mean(subset$lat) >= 0) {
+      32600 + zone  # Northern Hemisphere
+    } else {
+      32700 + zone  # Southern Hemisphere
+    }
+
+    utm_epsg <- paste0("epsg:", epsg_code)
+
+    # Transform land and points to UTM
+    points_utm <- sf::st_transform(points_wgs, crs = epsg_code)
+    land_utm <- st_transform(land_crop, crs = utm_epsg)
+
+    # Create a buffered shape around the coastline in meters (specified distance)
+    l_buffer <- st_buffer(land_utm, dist = distance)
+
+    # Apply st_wrap_dateline only if the CRS is geographic
+    if (st_crs(l_buffer)$epsg == crs) {
+      l_buffer <- l_buffer %>% st_wrap_dateline()
+    }
+
+    # Transform the buffered coastline and land data back to the original CRS
+    l_buffer <- st_transform(l_buffer, crs = crs)
+
+    # Create sf object for positions
+    positions_sf <- st_as_sf(data.frame(lon = subset$lon, lat = subset$lat),
+                             coords = c("lon", "lat"), crs = st_crs(crs))
+
+    # Check which positions intersect with the buffer and land
+    near_land <- st_intersects(positions_sf, l_buffer)
+
+    # Extract logical vectors indicating whether each position is near land or on land
+    near_land_logical <- lengths(near_land) > 0
+
+    # Assign results back to the appropriate positions in the result vector
+    result[subset$index] <- near_land_logical
   }
 
-  # Transform the buffered coastline and land data back to the original CRS
-  l_buffer <- st_transform(l_buffer, crs = crs)
+  # Optional plotting
+  if (plot) {
+    positions_sf <- st_as_sf(data.frame(lon = coords$lon, lat = coords$lat,
+                                        near_land = result[!is.na(result)]),
+                             coords = c("lon", "lat"), crs = st_crs(crs))
 
-  # Create sf object for positions
-  positions_sf <- st_as_sf(data.frame(lon = longitudes_filtered, lat = latitudes_filtered),
-                           coords = c("lon", "lat"), crs = st_crs(crs))
+    p <- ggplot() +
+      geom_sf(data = land, fill = "gray80", color = "black", alpha = 0.5) +
+      geom_sf(data = positions_sf, aes(color = near_land), size = 2) +
+      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "green")) +
+      xlim(c(min(coords$lon) - .1, max(coords$lon) + .1)) +
+      ylim(c(min(coords$lat) - .1, max(coords$lat) + .1)) +
+      coord_sf(crs = crs) +
+      labs(title = paste("Buffer Distance:", distance, "m"),
+           color = "Near Land") +
+      theme_minimal() +
+      # Set white background and ensure plot background is white
+      theme(
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA)
+      )
 
-  # Check which positions intersect with the buffer and land
-  near_land <- st_intersects(positions_sf, l_buffer)
+    return(p)
+  }
 
-  # Extract logical vectors indicating whether each position is near land or on land
-  near_land_logical <- lengths(near_land) > 0
-
-  # Assign results back to the appropriate positions in the result vector
-  result[!na_positions] <- near_land_logical
-
-  # Return the logical vector indicating near land with NAs for original NA positions
-  return(result)
+  result
 }

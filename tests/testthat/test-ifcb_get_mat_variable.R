@@ -1,6 +1,4 @@
 test_that("ifcb_get_mat_variable correctly retrieves a specified variable from a MAT file", {
-  # Skip slow test on CRAN
-  skip_on_cran()
 
   # Define the path to the example .mat file included in the iRfcb package
   mat_file <- system.file("exdata/example.mat", package = "iRfcb")
@@ -11,14 +9,18 @@ test_that("ifcb_get_mat_variable correctly retrieves a specified variable from a
   # Call the function to get the 'class2use' variable
   classes <- ifcb_get_mat_variable(mat_file, "classifierName")
 
+  # Call the function to get the 'class2use' variable using Python
+  classes_py <- ifcb_get_mat_variable(mat_file, "classifierName", use_python = TRUE)
+
+  # Expect that the .mat data from R and Python are identical
+  expect_identical(classes, classes_py)
+
   # Check if the retrieved classes are as expected (assuming you know the expected classes)
   expected_classes <- "Z:\\data\\manual\\Skagerrak-Kattegat\\summary\\results_21May202421May2024"
   expect_equal(classes[1], expected_classes, info = "Retrieved classes should match expected values")
 })
 
 test_that("ifcb_get_mat_variable handles missing variable gracefully", {
-  # Skip slow test on CRAN
-  skip_on_cran()
 
   # Define the path to the example .mat file included in the iRfcb package
   mat_file <- system.file("exdata/example.mat", package = "iRfcb")
@@ -33,8 +35,6 @@ test_that("ifcb_get_mat_variable handles missing variable gracefully", {
 })
 
 test_that("ifcb_get_mat_variable handles empty MAT file gracefully", {
-  # Skip slow test on CRAN
-  skip_on_cran()
 
   # Create a temporary directory and file for the test
   temp_dir <- file.path(tempdir(), "ifcb_get_mat_variable")

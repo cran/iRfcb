@@ -10,12 +10,17 @@ ifcb_extract_pngs(
   ROInumbers = NULL,
   taxaname = NULL,
   gamma = 1,
-  verbose = TRUE,
-  overwrite = FALSE
+  overwrite = FALSE,
+  scale_bar_um = NULL,
+  scale_micron_factor = 1/3.4,
+  scale_bar_position = "bottomright",
+  scale_bar_color = "black",
+  old_adc = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{roi_file}{A character string specifying the path to the .roi file.}
+\item{roi_file}{A character string specifying the path to the \code{.roi} file.}
 
 \item{out_folder}{A character string specifying the directory where the PNG images will be saved. Defaults to the directory of the ROI file.}
 
@@ -25,17 +30,28 @@ ifcb_extract_pngs(
 
 \item{gamma}{A numeric value for gamma correction applied to the image. Default is 1 (no correction). Values <1 increase contrast in dark regions, while values >1 decrease contrast.}
 
-\item{verbose}{A logical value indicating whether to print progress messages. Default is TRUE.}
-
 \item{overwrite}{A logical value indicating whether to overwrite existing PNG files. Default is FALSE.}
+
+\item{scale_bar_um}{An optional numeric value specifying the length of the scale bar in micrometers. If NULL, no scale bar is added.}
+
+\item{scale_micron_factor}{A numeric value defining the conversion factor from micrometers to pixels. Defaults to 1/3.4.}
+
+\item{scale_bar_position}{A character string specifying the position of the scale bar in the image. Options are \code{"topright"}, \code{"topleft"}, \code{"bottomright"}, or \code{"bottomleft"}. Defaults to \code{"bottomright"}.}
+
+\item{scale_bar_color}{A character string specifying the scale bar color. Options are \code{"black"} or \code{"white"}. Defaults to \code{"black"}.}
+
+\item{old_adc}{A logical value indicating whether the \code{adc} file is of the old format (samples from IFCB1-6, labeled "IFCBxxx_YYYY_DDD_HHMMSS"). Default is FALSE.}
+
+\item{verbose}{A logical value indicating whether to print progress messages. Default is TRUE.}
 }
 \value{
 This function is called for its side effects: it writes PNG images to a directory.
 }
 \description{
-This function reads an IFCB (.roi) file and its corresponding .adc file, extracts regions of interest (ROIs),
+This function reads an IFCB (\code{.roi}) file and its corresponding \code{.adc} file, extracts regions of interest (ROIs),
 and saves each ROI as a PNG image in a specified directory. Optionally, you can specify ROI numbers
-to extract, useful for specific ROIs from manual or automatic classification results.
+to extract, useful for specific ROIs from manual or automatic classification results. Additionally, a scale bar
+can be added to the extracted images based on a specified micron-to-pixel conversion factor.
 }
 \examples{
 \dontrun{
@@ -44,6 +60,9 @@ ifcb_extract_pngs("path/to/your_roi_file.roi")
 
 # Extract specific ROI numbers from ROI file
 ifcb_extract_pngs("path/to/your_roi_file.roi", "output_directory", ROInumbers = c(1, 2, 3))
+
+# Extract images with a 5 micrometer scale bar
+ifcb_extract_pngs("path/to/your_roi_file.roi", scale_bar_um = 5)
 }
 }
 \seealso{

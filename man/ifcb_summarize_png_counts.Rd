@@ -12,17 +12,17 @@ ifcb_summarize_png_counts(
 )
 }
 \arguments{
-\item{png_folder}{A character string specifying the path to the main directory containing subfolders (classes) with .png images.}
+\item{png_folder}{A character string specifying the path to the main directory containing subfolders (classes) with \code{.png} images.}
 
-\item{hdr_folder}{A character string specifying the path to the directory containing the .hdr files. Default is NULL.}
+\item{hdr_folder}{A character string specifying the path to the directory containing the \code{.hdr} files. Default is NULL.}
 
 \item{sum_level}{A character string specifying the level of summarization. Options: "sample" (default) or "class".}
 
 \item{verbose}{A logical indicating whether to print progress messages. Default is TRUE.}
 }
 \value{
-If sum_level is "sample", returns a data frame with columns: sample, ifcb_number, class_name, n_images, gpsLatitude, gpsLongitude, timestamp, year, month, day, time, roi_numbers.
-If sum_level is "class", returns a data frame with columns: class_name, n_images.
+If sum_level is "sample", returns a data frame with columns: \code{sample}, \code{ifcb_number}, \code{class_name}, \code{n_images}, \code{gpsLatitude}, \code{gpsLongitude}, \code{timestamp}, \code{year}, \code{month}, \code{day}, \code{time}, \code{roi_numbers}.
+If sum_level is "class", returns a data frame with columns: \code{class_name}, \code{n_images.}
 }
 \description{
 This function summarizes the number of images per class for each sample and timestamps,
@@ -46,16 +46,16 @@ hdr_folder <- "path/to/hdr_folder" # This folder should contain corresponding .h
 
 # Summarize by sample
 summary_sample <- ifcb_summarize_png_counts(png_folder,
-                                          hdr_folder,
-                                          sum_level = "sample",
-                                          verbose = TRUE)
+                                            hdr_folder,
+                                            sum_level = "sample",
+                                            verbose = TRUE)
 print(summary_sample)
 
 # Summarize by class
 summary_class <- ifcb_summarize_png_counts(png_folder,
-                                         hdr_folder,
-                                         sum_level = "class",
-                                         verbose = TRUE)
+                                           hdr_folder,
+                                           sum_level = "class",
+                                           verbose = TRUE)
 print(summary_class)
 }
 }

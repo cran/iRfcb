@@ -346,21 +346,22 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 to streamline the analysis of Imaging FlowCytobot (IFCB) data, with a
 focus on supporting marine ecological research and monitoring. By
 integrating R and Python functionalities, the package facilitates
-efficient handling of IFCB image data, extraction of key metadata, and
-preparation of outputs for further taxonomic, ecological, or spatial
-analyses.</p>
+efficient handling and sharing of IFCB image data, extraction of key
+metadata, and preparation of outputs for further taxonomic, ecological,
+or spatial analyses.</p>
 <p>This tutorial serves as an introduction to the core functionalities
 of <code>iRfcb</code>, providing step-by-step instructions for data
-preprocessing, taxonomic analysis, and SHARK-compliant data export.</p>
+preprocessing, taxonomic analysis, and SHARK-compliant data export. For
+additional guides—such as quality control of IFCB data, data sharing,
+and integration with MATLAB—please refer to the other tutorials
+available on the project’s <a href="https://europeanifcbgroup.github.io/iRfcb/">webpage</a>.</p>
 </div>
 <div id="getting-started" class="section level2">
 <h2>Getting Started</h2>
 <div id="installation" class="section level3">
 <h3>Installation</h3>
-<p>You can install the package from GitHub using the
-<code>remotes</code> package:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># install.packages(&quot;remotes&quot;)</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;EuropeanIFCBGroup/iRfcb&quot;</span>)</span></code></pre></div>
+<p>You can install the package from CRAN using:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;iRfcb&quot;</span>)</span></code></pre></div>
 <p>Load the <code>iRfcb</code> and <code>dplyr</code> libraries:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(iRfcb)</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(dplyr) <span class="co"># For data wrangling</span></span></code></pre></div>
@@ -517,14 +518,19 @@ added to the output.</p>
 <p>IFCB images stored in <code>.roi</code> files can be extracted as
 <code>.png</code> files using the <code>iRfcb</code> package, as
 demonstrated below.</p>
-<p>Extract all images from a sample using the <a href="../reference/ifcb_extract_pngs.html"><code>ifcb_extract_pngs</code></a>
-function. You can specify the <code>out_folder</code>, but by default,
-images will be saved in a subdirectory within the same directory as the
-ROI file. The <code>gamma</code> can be adjusted to enhance image
-contrast.</p>
+<p>Extract all images from a sample using the
+<code>ifcb_extract_pngs()</code> function. You can specify the
+<code>out_folder</code>, but by default, images will be saved in a
+subdirectory within the same directory as the ROI file. The
+<code>gamma</code> can be adjusted to enhance image contrast, and an
+optional scale bar can be added by specifying
+<code>scale_bar_um</code>.</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co"># All ROIs in sample</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="fu">ifcb_extract_pngs</span>(<span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>                  <span class="at">gamma =</span> <span class="dv">1</span>) <span class="co"># Default gamma value</span></span></code></pre></div>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="fu">ifcb_extract_pngs</span>(</span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>  <span class="at">gamma =</span> <span class="dv">1</span>, <span class="co"># Default gamma value</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>  <span class="at">scale_bar_um =</span> <span class="dv">5</span> <span class="co"># Add a 5 micrometer scale bar</span></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>) </span></code></pre></div>
 <pre><code>## Writing 1218 ROIs from D20230314T001205_IFCB134.roi to data/data/2023/D20230314/D20230314T001205_IFCB134</code></pre>
 <p>Extract specific ROIs:</p>
 <div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="co"># Only ROI number 2 and 5</span></span>
@@ -532,9 +538,8 @@ contrast.</p>
 <span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a>                  <span class="at">ROInumbers =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>))</span></code></pre></div>
 <pre><code>## Writing 2 ROIs from D20230314T003836_IFCB134.roi to data/data/2023/D20230314/D20230314T003836_IFCB134</code></pre>
 <p>To extract annotated images or classified results from MATLAB files,
-please see the <a href="../articles/image-export-tutorial.html">Sharing
-Annotated IFCB Images</a> and <a href="../articles/matlab-tutorial.html">Handling MATLAB Results</a>
-tutorials.</p>
+please see the <code>vignette(&quot;image-export-tutorial&quot;)</code> and
+<code>vignette(&quot;matlab-tutorial&quot;)</code> tutorials.</p>
 </div>
 <div id="taxonomical-data" class="section level2">
 <h2>Taxonomical Data</h2>
@@ -584,9 +589,9 @@ their corresponding classification records from WoRMS, and checks if
 they belong to the specified diatom class. The function only uses the
 first name (genus name) of each taxa for classification. This function
 can be useful for converting biovolumes to carbon according to
-Menden-Deuer and Lessard (2000). See <a href="../reference/vol2C_nondiatom.html"><code>vol2C_nondiatom</code></a>
-and <a href="../reference/vol2C_lgdiatom.html"><code>vol2C_lgdiatom</code></a>
-for carbon calculations (not included in NAMESPACE).</p>
+Menden-Deuer and Lessard (2000). See <code>vol2C_nondiatom()</code> and
+<code>vol2C_lgdiatom()</code> for carbon calculations (not included in
+NAMESPACE).</p>
 <div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="co"># Read class2use file and select five taxa</span></span>
 <span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>class2use <span class="ot">&lt;-</span> <span class="fu">ifcb_get_mat_variable</span>(<span class="st">&quot;data/config/class2use.mat&quot;</span>)[<span class="dv">10</span><span class="sc">:</span><span class="dv">15</span>]</span>
 <span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a></span>
@@ -611,17 +616,19 @@ may be adjusted using the <code>diatom_class</code> argument.</p>
 <p>This function takes a list of taxa names and matches them with the
 <strong>SMHI Trophic Type</strong> list used in <a href="https://shark.smhi.se/hamta-data/">SHARK</a>.</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="co"># Example taxa names</span></span>
-<span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a>taxa_list <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Acanthoceras zachariasii&quot;</span>,</span>
-<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>               <span class="st">&quot;Nodularia spumigena&quot;</span>,</span>
-<span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>               <span class="st">&quot;Acanthoica quattrospina&quot;</span>,</span>
-<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>               <span class="st">&quot;Noctiluca&quot;</span>,</span>
-<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a>               <span class="st">&quot;Gymnodiniales&quot;</span>)</span>
-<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a></span>
-<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="co"># Get trophic type for taxa</span></span>
-<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a>trophic_type <span class="ot">&lt;-</span> <span class="fu">ifcb_get_trophic_type</span>(taxa_list)</span>
-<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a></span>
-<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a><span class="co"># Print result</span></span>
-<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a><span class="fu">print</span>(trophic_type)</span></code></pre></div>
+<span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a>taxa_list <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>  <span class="st">&quot;Acanthoceras zachariasii&quot;</span>,</span>
+<span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>  <span class="st">&quot;Nodularia spumigena&quot;</span>,</span>
+<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>  <span class="st">&quot;Acanthoica quattrospina&quot;</span>,</span>
+<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a>  <span class="st">&quot;Noctiluca&quot;</span>,</span>
+<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a>  <span class="st">&quot;Gymnodiniales&quot;</span></span>
+<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a>)</span>
+<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a></span>
+<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a><span class="co"># Get trophic type for taxa</span></span>
+<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>trophic_type <span class="ot">&lt;-</span> <span class="fu">ifcb_get_trophic_type</span>(taxa_list)</span>
+<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a></span>
+<span id="cb29-13"><a href="#cb29-13" tabindex="-1"></a><span class="co"># Print result</span></span>
+<span id="cb29-14"><a href="#cb29-14" tabindex="-1"></a><span class="fu">print</span>(trophic_type)</span></code></pre></div>
 <pre><code>## [1] &quot;AU&quot; &quot;AU&quot; &quot;MX&quot; &quot;HT&quot; &quot;NS&quot;</code></pre>
 </div>
 </div>
@@ -677,10 +684,11 @@ delivery format. An example submission is also provided in
 ## 4  77SE        12  2,02E+13 2022-07-13 17:58:38
 ## 5  77SE        12  2,02E+13 2022-07-13 17:58:38</code></pre>
 <p>This concludes this tutorial for the <code>iRfcb</code> package. For
-more detailed information, refer to the package documentation or the
-other <a href="../articles/index.html">tutorials</a>. See how data
-pipelines can be constructed using <code>iRfcb</code> in the following
-<a href="https://github.com/nodc-sweden/ifcb-data-pipeline">Example
+additional guides—such as quality control of IFCB data, data sharing,
+and integration with MATLAB—please refer to the other tutorials
+available on the project’s <a href="https://europeanifcbgroup.github.io/iRfcb/">webpage</a>. See how
+data pipelines can be constructed using <code>iRfcb</code> in the
+following <a href="https://github.com/nodc-sweden/ifcb-data-pipeline">Example
 Project</a>. Happy analyzing!</p>
 </div>
 <div id="citation" class="section level2">
@@ -688,8 +696,8 @@ Project</a>. Happy analyzing!</p>
 <pre><code>## To cite package &#39;iRfcb&#39; in publications use:
 ## 
 ##   Anders Torstensson (2025). iRfcb: Tools for Managing Imaging
-##   FlowCytobot (IFCB) Data. R package version 0.4.3.
-##   https://doi.org/10.5281/zenodo.12533225
+##   FlowCytobot (IFCB) Data. R package version 0.5.0.
+##   https://CRAN.R-project.org/package=iRfcb
 ## 
 ## A BibTeX entry for LaTeX users is
 ## 
@@ -697,8 +705,8 @@ Project</a>. Happy analyzing!</p>
 ##     title = {iRfcb: Tools for Managing Imaging FlowCytobot (IFCB) Data},
 ##     author = {Anders Torstensson},
 ##     year = {2025},
-##     note = {R package version 0.4.3},
-##     url = {https://doi.org/10.5281/zenodo.12533225},
+##     note = {R package version 0.5.0},
+##     url = {https://CRAN.R-project.org/package=iRfcb},
 ##   }</code></pre>
 </div>
 <div id="references" class="section level2">

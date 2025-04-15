@@ -1,6 +1,5 @@
 ## ----eval=FALSE---------------------------------------------------------------
-# # install.packages("remotes")
-# remotes::install_github("EuropeanIFCBGroup/iRfcb")
+# install.packages("iRfcb")
 
 ## ----eval=FALSE---------------------------------------------------------------
 # library(iRfcb)
@@ -80,8 +79,11 @@ head(multiblob_features[[1]])[,1:10]
 
 ## -----------------------------------------------------------------------------
 # All ROIs in sample
-ifcb_extract_pngs("data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
-                  gamma = 1) # Default gamma value
+ifcb_extract_pngs(
+  "data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
+  gamma = 1, # Default gamma value
+  scale_bar_um = 5 # Add a 5 micrometer scale bar
+) 
 
 ## -----------------------------------------------------------------------------
 # Only ROI number 2 and 5
@@ -112,11 +114,13 @@ class_list
 
 ## -----------------------------------------------------------------------------
 # Example taxa names
-taxa_list <- c("Acanthoceras zachariasii",
-               "Nodularia spumigena",
-               "Acanthoica quattrospina",
-               "Noctiluca",
-               "Gymnodiniales")
+taxa_list <- c(
+  "Acanthoceras zachariasii",
+  "Nodularia spumigena",
+  "Acanthoica quattrospina",
+  "Noctiluca",
+  "Gymnodiniales"
+)
 
 # Get trophic type for taxa
 trophic_type <- ifcb_get_trophic_type(taxa_list)

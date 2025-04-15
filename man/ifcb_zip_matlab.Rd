@@ -22,15 +22,15 @@ ifcb_zip_matlab(
 )
 }
 \arguments{
-\item{manual_folder}{The directory containing .mat files to be included in the zip archive.}
+\item{manual_folder}{The directory containing \code{.mat} files to be included in the zip archive.}
 
-\item{features_folder}{The directory containing .csv files, including subfolders, to be included in the zip archive.}
+\item{features_folder}{The directory containing \code{.csv} files, including subfolders, to be included in the zip archive.}
 
 \item{class2use_file}{The path to the file (class2use_file) that will be renamed and included in the 'config' directory of the zip archive.}
 
 \item{zip_filename}{The filename for the zip archive to be created.}
 
-\item{data_folder}{Optionally, the directory containing additional data files (.roi, .adc, .hdr) to be included in the zip archive.}
+\item{data_folder}{Optionally, the directory containing additional data files (\code{.roi}, \code{.adc}, \code{.hdr}) to be included in the zip archive.}
 
 \item{readme_file}{Optionally, the path to a README file that will be updated with metadata and included in the zip archive.}
 
@@ -76,13 +76,13 @@ This function performs the following operations:
 \examples{
 \dontrun{
 ifcb_zip_matlab("path/to/manual_files", "path/to/feature_files",
-                 "path/to/class2use.mat", "output_zip_archive.zip",
-                 data_folder = "path/to/data_files",
-                 readme_file = system.file("exdata/README-template.md", package = "iRfcb"),
-                 matlab_readme_file = system.file("inst/exdata/MATLAB-template.md",
-                                                  package = "iRfcb"),
-                 email_address = "example@email.com",
-                 version = "1.0")
+                "path/to/class2use.mat", "output_zip_archive.zip",
+                data_folder = "path/to/data_files",
+                readme_file = system.file("exdata/README-template.md", package = "iRfcb"),
+                matlab_readme_file = system.file("inst/exdata/MATLAB-template.md",
+                                                 package = "iRfcb"),
+                email_address = "example@email.com",
+                version = "1.0")
 }
 
 }

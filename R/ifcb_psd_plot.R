@@ -18,6 +18,9 @@ utils::globalVariables(c("x", "y"))
 #'
 #' @examples
 #' \dontrun{
+#' #' # Initialize a python session if not already set up
+#' ifcb_py_install()
+#'
 #' # Analyze PSD
 #' psd <- ifcb_psd(feature_folder = 'path/to/features',
 #'                 hdr_folder = 'path/to/hdr_data',
@@ -40,6 +43,7 @@ utils::globalVariables(c("x", "y"))
 #'                       data = psd$data,
 #'                       fits = psd$fits,
 #'                       start_fit = 10)
+#'
 #' # Inspect plot
 #' print(plot)
 #' }
@@ -83,7 +87,9 @@ ifcb_psd_plot <- function(sample_name, data, fits, start_fit) {
     theme(
       panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
-      panel.border = element_rect(color = "black", fill = NA)
+      panel.border = element_rect(color = "black", fill = NA),
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA)
     )
 
   # Add the power curve fit if R2 is not -Inf

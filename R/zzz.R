@@ -1,3 +1,4 @@
+.iRfcbEnv <- new.env(parent = emptyenv())
 #' Initialize iRfcb Python Environment on Package Load
 #'
 #' This function is executed when the `iRfcb` package is loaded. It sets up the Python environment
@@ -26,4 +27,35 @@
 
   # List required packages
   reticulate::py_require(reqs)
+
+  # You can store info in a package env to retrieve later if needed
+  .iRfcbEnv$venv <- NULL
+
+  # Only set up environment, no messages
+  if (Sys.getenv("USE_IRFCB_PYTHON") == "TRUE") {
+    venv_list <- reticulate::virtualenv_list()
+    iRfcb_venvs <- venv_list[grepl("iRfcb", venv_list)]
+
+    found <- FALSE
+    for (venv in iRfcb_venvs) {
+      if (reticulate::virtualenv_exists(venv)) {
+        .iRfcbEnv$venv <- venv
+        py_exec <- if (.Platform$OS.type == "windows") "Scripts/python.exe" else "bin/python"
+        Sys.setenv(RETICULATE_PYTHON = file.path(reticulate::virtualenv_root(), venv, py_exec))
+        reticulate::py_available(initialize = TRUE)
+        found <- TRUE
+        break
+      }
+    }
+
+    if (!found) {
+      .iRfcbEnv$venv <- NULL
+    }
+  }
+}
+
+.onAttach <- function(libname, pkgname) {
+  if (!is.null(.iRfcbEnv$venv)) {
+    packageStartupMessage("Using existing Python virtual environment: ", .iRfcbEnv$venv)
+  }
 }
