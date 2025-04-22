@@ -1,7 +1,7 @@
 Package: iRfcb
 Type: Package
 Title: Tools for Managing Imaging FlowCytobot (IFCB) Data
-Version: 0.5.0
+Version: 0.5.1
 Authors@R: c(
     person("Anders", "Torstensson", email = "anders.torstensson@smhi.se", role = c("aut", "cre"),
            comment = c(affiliation = "Swedish Meteorological and Hydrological Institute", ORCID = "0000-0002-8283-656X")),
@@ -35,7 +35,7 @@ URL: https://europeanifcbgroup.github.io/iRfcb/,
         https://github.com/EuropeanIFCBGroup/iRfcb
 Language: en-US
 NeedsCompilation: no
-Packaged: 2025-04-15 19:00:32 UTC; anderstorstensson
+Packaged: 2025-04-22 07:00:37 UTC; anderstorstensson
 Author: Anders Torstensson [aut, cre] (Swedish Meteorological and Hydrological
     Institute, <https://orcid.org/0000-0002-8283-656X>),
   Kendra Hayashi [ctb] (<https://orcid.org/0000-0003-1600-9504>),
@@ -47,4 +47,4 @@ Author: Anders Torstensson [aut, cre] (Swedish Meteorological and Hydrological
   SBDI [fnd] (Swedish Research Council, 2019-00242)
 Maintainer: Anders Torstensson <anders.torstensson@smhi.se>
 Repository: CRAN
-Date/Publication: 2025-04-15 19:30:06 UTC
+Date/Publication: 2025-04-22 15:50:02 UTC
