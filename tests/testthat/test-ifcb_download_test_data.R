@@ -1,7 +1,11 @@
 test_that("ifcb_download_test_data downloads and unzips files correctly", {
+  # Skip on macOS GitHub runner
+  skip_on_os("mac")
+
   # Check for internet connection and skip the test if offline
-  skip_if_offline(host = "figshare.scilifelab.se")
+  skip_if_offline()
   skip_on_cran()
+  skip_if_resource_unavailable("https://figshare.scilifelab.se")
 
   # Setup test environment
   temp_dir <- file.path(tempdir(), "ifcb_download_test_data")
