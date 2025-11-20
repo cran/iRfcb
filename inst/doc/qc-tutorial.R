@@ -107,7 +107,8 @@ psd <- ifcb_psd(
   missing_cells = 0.7,
   biomass = 1000,
   bloom = 5,
-  humidity = 70
+  humidity = 70,
+  fea_v = 2, # Use v2 features
 )
 
 ## -----------------------------------------------------------------------------

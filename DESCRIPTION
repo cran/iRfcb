@@ -1,7 +1,7 @@
 Type: Package
 Package: iRfcb
 Title: Tools for Managing Imaging FlowCytobot (IFCB) Data
-Version: 0.5.2
+Version: 0.6.0
 Authors@R: c(
     person("Anders", "Torstensson", email = "anders.torstensson@smhi.se", role = c("aut", "cre"),
            comment = c("Swedish Meteorological and Hydrological Institute", ORCID = "0000-0002-8283-656X")),
@@ -35,9 +35,10 @@ Description: A comprehensive suite of tools for managing, processing, and
 License: MIT + file LICENSE
 URL: https://europeanifcbgroup.github.io/iRfcb/,
         https://github.com/EuropeanIFCBGroup/iRfcb
+Depends: R (>= 4.1)
 Imports: curl (>= 6.0.0), dplyr, ggplot2, lifecycle, lubridate, png,
         R.matlab, readr, reticulate (>= 1.41.0), sf, shiny, stringr,
-        tidyr, worrms, zip
+        tidyr, worrms, zip, jsonlite
 Suggests: knitr, mockery, rmarkdown, spelling, testthat (>= 3.0.0)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
@@ -45,9 +46,9 @@ Encoding: UTF-8
 Language: en-US
 Note: This package includes code from https://github.com/kudelalab/PSD
         by kudelalab licensed under the MIT License.
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 NeedsCompilation: no
-Packaged: 2025-09-02 20:34:35 UTC; anderstorstensson
+Packaged: 2025-11-20 08:47:59 UTC; a002440
 Author: Anders Torstensson [aut, cre] (Swedish Meteorological and Hydrological
     Institute, ORCID: <https://orcid.org/0000-0002-8283-656X>),
   Kendra Hayashi [ctb] (ORCID: <https://orcid.org/0000-0003-1600-9504>),
@@ -59,4 +60,4 @@ Author: Anders Torstensson [aut, cre] (Swedish Meteorological and Hydrological
   SBDI [fnd] (Swedish Research Council, 2019-00242)
 Maintainer: Anders Torstensson <anders.torstensson@smhi.se>
 Repository: CRAN
-Date/Publication: 2025-09-03 05:30:02 UTC
+Date/Publication: 2025-11-20 10:10:02 UTC

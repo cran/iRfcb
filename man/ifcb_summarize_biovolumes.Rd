@@ -13,12 +13,14 @@ ifcb_summarize_biovolumes(
   custom_classes = NULL,
   micron_factor = 1/3.4,
   diatom_class = "Bacillariophyceae",
+  diatom_include = NULL,
   marine_only = FALSE,
   threshold = "opt",
   feature_recursive = TRUE,
   mat_recursive = TRUE,
   hdr_recursive = TRUE,
   drop_zero_volume = FALSE,
+  feature_version = NULL,
   use_python = FALSE,
   verbose = TRUE
 )
@@ -43,6 +45,9 @@ used as a substitute for MATLAB files.}
 
 \item{diatom_class}{A string vector of diatom class names in the World Register of Marine Species (WoRMS). Default is "Bacillariophyceae".}
 
+\item{diatom_include}{Optional character vector of class names that should always be treated as diatoms,
+overriding the boolean result of \code{ifcb_is_diatom}. Default: NULL.}
+
 \item{marine_only}{Logical. If TRUE, restricts the WoRMS search to marine taxa only. Default is FALSE.}
 
 \item{threshold}{Threshold for classification (default: "opt").}
@@ -54,6 +59,8 @@ used as a substitute for MATLAB files.}
 \item{hdr_recursive}{Logical. If TRUE, the function will search for HDR files recursively within the \code{hdr_folder} (if provided). Default is TRUE.}
 
 \item{drop_zero_volume}{Logical. If \code{TRUE}, rows where \code{Biovolume} equals zero (e.g., artifacts such as smudges on the flow cell) are removed. Default: \code{FALSE}.}
+
+\item{feature_version}{Optional numeric or character version to filter feature files by (e.g. 2 for "_v2"). Default is NULL (no filtering).}
 
 \item{use_python}{Logical. If \code{TRUE}, attempts to read the \code{.mat} file using a Python-based method. Default is \code{FALSE}.}
 

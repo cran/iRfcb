@@ -17,12 +17,15 @@ utils::globalVariables(c("biovolume_um3", "carbon_pg", "counts", "classifier", "
 #' @param custom_classes (Optional) A character vector of corresponding class labels for `custom_images`.
 #' @param micron_factor Conversion factor from microns per pixel (default: 1/3.4).
 #' @param diatom_class A string vector of diatom class names in the World Register of Marine Species (WoRMS). Default is "Bacillariophyceae".
+#' @param diatom_include Optional character vector of class names that should always be treated as diatoms,
+#'        overriding the boolean result of \code{ifcb_is_diatom}. Default: NULL.
 #' @param marine_only Logical. If TRUE, restricts the WoRMS search to marine taxa only. Default is FALSE.
 #' @param threshold Threshold for classification (default: "opt").
 #' @param feature_recursive Logical. If TRUE, the function will search for feature files recursively within the `feature_folder`. Default is TRUE.
 #' @param mat_recursive Logical. If TRUE, the function will search for MATLAB files recursively within the `mat_folder`. Default is TRUE.
 #' @param hdr_recursive Logical. If TRUE, the function will search for HDR files recursively within the `hdr_folder` (if provided). Default is TRUE.
 #' @param drop_zero_volume Logical. If `TRUE`, rows where `Biovolume` equals zero (e.g., artifacts such as smudges on the flow cell) are removed. Default: `FALSE`.
+#' @param feature_version Optional numeric or character version to filter feature files by (e.g. 2 for "_v2"). Default is NULL (no filtering).
 #' @param use_python Logical. If `TRUE`, attempts to read the `.mat` file using a Python-based method. Default is `FALSE`.
 #' @param verbose A logical indicating whether to print progress messages. Default is TRUE.
 #'
@@ -76,10 +79,10 @@ utils::globalVariables(c("biovolume_um3", "carbon_pg", "counts", "classifier", "
 #' @export
 ifcb_summarize_biovolumes <- function(feature_folder, mat_folder = NULL, class2use_file = NULL,
                                       hdr_folder = NULL, custom_images = NULL, custom_classes = NULL,
-                                      micron_factor = 1 / 3.4, diatom_class = "Bacillariophyceae",
+                                      micron_factor = 1 / 3.4, diatom_class = "Bacillariophyceae", diatom_include = NULL,
                                       marine_only = FALSE, threshold = "opt", feature_recursive = TRUE,
                                       mat_recursive = TRUE, hdr_recursive = TRUE, drop_zero_volume = FALSE,
-                                      use_python = FALSE, verbose = TRUE) {
+                                      feature_version = NULL, use_python = FALSE, verbose = TRUE) {
 
   # Extract biovolumes and carbon content from feature and class files
   biovolumes <- ifcb_extract_biovolumes(feature_files = feature_folder,
@@ -89,11 +92,13 @@ ifcb_summarize_biovolumes <- function(feature_folder, mat_folder = NULL, class2u
                                         class2use_file = class2use_file,
                                         micron_factor = micron_factor,
                                         diatom_class = diatom_class,
+                                        diatom_include = diatom_include,
                                         marine_only = marine_only,
                                         threshold = threshold,
                                         feature_recursive = feature_recursive,
                                         mat_recursive = mat_recursive,
                                         drop_zero_volume = drop_zero_volume,
+                                        feature_version = feature_version,
                                         use_python = use_python,
                                         verbose = verbose)
 
