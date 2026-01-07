@@ -148,7 +148,7 @@ extract_parts <- function(filenames, tz = "UTC") {
   is_d_format <- grepl("^[A-Z]\\d{8}T\\d{6}", filenames)
   is_ifcb_format <- grepl("^IFCB\\d+_\\d{4}_\\d{3}_\\d{6}", filenames)
 
-  result <- data.frame(
+  result <- tibble(
     sample = filenames,
     timestamp = as.POSIXct(NA, tz = tz),
     date = as.Date(NA),
@@ -158,7 +158,6 @@ extract_parts <- function(filenames, tz = "UTC") {
     time = NA_character_,
     ifcb_number = NA_character_,
     roi = NA_integer_,
-    stringsAsFactors = FALSE
   )
 
   # Process D-format filenames
@@ -315,54 +314,6 @@ vol2C_nondiatom <- function(volume) {
   carbon
 }
 
-#' Handle Missing Ferrybox Data
-#'
-#' This function processes a dataset by filling in missing values for specific parameters using data from a Ferrybox dataset. It rounds the timestamp to a specified unit, joins the Ferrybox data based on the rounded timestamp, and fills in missing values using the corresponding Ferrybox data.
-#'
-#' @param data A data frame containing the main dataset with a `timestamp` column and several parameter columns that might have missing data.
-#' @param ferrybox_data A data frame containing the Ferrybox dataset. This dataset should have a `timestamp` column and columns corresponding to the parameters specified.
-#' @param parameters A character vector of column names (parameters) in `data` that should be checked for missing values and potentially filled using the Ferrybox data.
-#' @param rounding_function A function that rounds the `timestamp` to a specified unit (e.g., minute). This function should take a `timestamp` column and a `unit` argument.
-#'
-#' @return A data frame similar to `data`, but with missing values in the specified parameters filled in using the Ferrybox data. The output includes only the `timestamp` and the specified parameter columns.
-#'
-#' @details
-#' The function performs the following steps:
-#' \itemize{
-#'   \item Renames the columns in the `ferrybox_data` by appending `_ferrybox` to the names of the specified parameters.
-#'   \item Filters the `data` for rows with missing values in any of the specified parameters.
-#'   \item Rounds the `timestamp` to the nearest specified unit using the `rounding_function`.
-#'   \item Joins the `ferrybox_data` to the main `data` based on the rounded `timestamp`.
-#'   \item Uses the `coalesce` function to fill in missing values in the specified parameters with the corresponding values from the Ferrybox data.
-#'   \item Returns a cleaned dataset containing only the `timestamp` and the specified parameter columns.
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' # Assuming you have a data frame `data` with missing values, a Ferrybox data frame `ferrybox_data`,
-#' # and a rounding function `round_timestamp`.
-#' filled_data <- handle_missing_ferrybox_data(data,
-#'                                             ferrybox_data,
-#'                                             c("8002", "8003", "8172"),
-#'                                             round_timestamp)
-#' }
-#' @noRd
-handle_missing_ferrybox_data <- function(data, ferrybox_data, parameters, rounding_function) {
-  # Ensure that the columns from ferrybox_data are present and rename them
-  ferrybox_data <- ferrybox_data %>%
-    dplyr::rename_with(~ paste0(.x, "_ferrybox"), all_of(parameters))
-
-  # Filter rows with missing data for any of the parameters
-  missing_data <- data %>%
-    filter(if_any(all_of(parameters), is.na)) %>%
-    mutate(timestamp_minute = rounding_function(timestamp, unit = "minute")) %>%
-    left_join(ferrybox_data, by = "timestamp_minute") %>%
-    # Use coalesce to fill missing parameter values
-    mutate(across(all_of(parameters), ~ coalesce(.x, get(paste0(cur_column(), "_ferrybox"))))) %>%
-    select(timestamp, all_of(parameters))
-
-  missing_data
-}
 #' Retrieve WoRMS Records with Retry Mechanism
 #'
 #' @description
@@ -555,32 +506,55 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
 }
 #' Check Python and Required Modules Availability
 #'
-#' This helper function checks if Python is available and if the required Python module (e.g., `scipy`) is installed.
-#' It stops execution and raises an error if Python or the specified module is not available.
+#' This helper function checks if Python is available and if the required Python modules
+#' (for example "scipy", "pandas") are installed. It stops execution and raises an error
+#' if Python or any required module is not available.
 #'
-#' @param module Character. Name of the Python module to check (default is "scipy").
-#' @param initialize Logical. Whether to initialize Python if not already initialized (default is TRUE).
+#' @param modules Character vector. Names of the Python modules to check.
+#'   Default is "scipy".
+#' @param initialize Logical. Whether to initialize Python if not already initialized.
+#'   Default is FALSE.
 #'
-#' @return This function does not return a value. It stops execution if the required Python environment is not available.
+#' @return This function does not return a value. It stops execution if the required
+#'   Python environment is not available.
 #'
 #' @examples
 #' \dontrun{
-#' check_python_and_module("scipy") # Check for Python and 'scipy'
+#' check_python_and_module("scipy")
+#' check_python_and_module(c("scipy", "pandas", "matplotlib"))
 #' }
 #' @noRd
-check_python_and_module <- function(module = "scipy", initialize = FALSE) {
+check_python_and_module <- function(modules = "scipy", initialize = FALSE) {
   # Check if Python is available
-  if (!py_available(initialize = initialize)) {
-    stop("Python is not available. Please ensure Python is installed and initalized, or see `ifcb_py_install`.")
+  if (!reticulate::py_available(initialize = initialize)) {
+    stop(
+      "Python is not available. Please ensure Python is installed and initialized, ",
+      "or see `ifcb_py_install`."
+    )
   }
+
+  # Discover Python configuration
+  py_cfg <- reticulate::py_discover_config()
 
   # List available packages
-  available_packages <- py_list_packages(python = reticulate::py_discover_config()$python)
+  available_packages <- reticulate::py_list_packages(
+    python = py_cfg$python
+  )
 
-  # Check if the required Python module is available
-  if (!module %in% available_packages$package) {
-    stop(paste("Python package '", module, "' is not available. Please install '", module, "' in your Python environment, or see `ifcb_py_install`.", sep = ""))
+  # Find missing modules
+  missing_modules <- setdiff(modules, available_packages$package)
+
+  # Error if any modules are missing
+  if (length(missing_modules) > 0) {
+    stop(
+      "The following Python package(s) are not available: ",
+      paste(sprintf("'%s'", missing_modules), collapse = ", "),
+      ". Please install them in your Python environment, ",
+      "or see `ifcb_py_install`."
+    )
   }
+
+  invisible(TRUE)
 }
 #' Check Python and SciPy Availability
 #'

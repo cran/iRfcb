@@ -11,13 +11,13 @@ A data frame containing example data following the SHARK submission format.
 }
 \description{
 This function reads a SHARK submission example from a file included in the package.
-This format is used for submitting IFCB data to \url{https://shark.smhi.se/}.
+This format is used for submitting IFCB data to \url{https://shark.smhi.se/en/}.
 }
 \examples{
 shark_example <- ifcb_get_shark_example()
 
 # Print example as tibble
-dplyr::tibble(shark_example)
+print(shark_example)
 }
 \seealso{
 \code{\link{ifcb_get_shark_colnames}}

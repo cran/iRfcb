@@ -1,5 +1,12 @@
 #' Retrieve WoRMS Records with Retry Mechanism
 #'
+#' @description
+#' `r lifecycle::badge("superseded")`
+#'
+#' This function has been superseded by
+#' `SHARK4R::match_worms_taxa()` or `worrms::wm_records_names()`. It will not receive new features,
+#' but will continue to receive critical bug fixes as needed.
+#'
 #' This function attempts to retrieve WoRMS records using the provided taxa names.
 #' It retries the operation if an error occurs, up to a specified number of attempts.
 #'
@@ -17,7 +24,7 @@
 #' @return A data frame (or list if return_list is TRUE) of WoRMS records or NULL if the retrieval fails after the maximum number of attempts.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Example: Retrieve WoRMS records for a list of taxa names
 #' taxa <- c("Calanus finmarchicus", "Thalassiosira pseudonana", "Phaeodactylum tricornutum")
 #'
@@ -28,6 +35,7 @@
 #'                                  marine_only = TRUE,
 #'                                  verbose = TRUE)
 #'
+#' # Print records as tibble
 #' print(records)
 #' }
 #'
@@ -54,14 +62,14 @@ ifcb_match_taxa_names <- function(taxa_names, best_match_only = TRUE, max_retrie
       # Ensure all taxa are represented, filling missing responses with NA
       worms_records <- lapply(seq_along(taxa_names), function(i) {
         if (length(worms_records[[i]]) == 0) {
-          data.frame(name = taxa_names[i], status = "no content", AphiaID = NA, rank = NA, valid_name = NA, stringsAsFactors = FALSE)
+          tibble(name = taxa_names[i], status = "no content", AphiaID = NA, rank = NA, valid_name = NA)
         } else {
           # Select only the best match if requested
           match_data <- worms_records[[i]]
           if (best_match_only) {
             match_data <- match_data[1, ]  # Select the first row (alternative: use a ranking method)
           }
-          data.frame(name = taxa_names[i], match_data)
+          tibble(name = taxa_names[i], match_data)
         }
       })
 
@@ -74,11 +82,11 @@ ifcb_match_taxa_names <- function(taxa_names, best_match_only = TRUE, max_retrie
       # Handle specific errors
       if (grepl("204", error_message)) {
         no_content_messages <<- c(no_content_messages, "No WoRMS content for some taxa.")
-        worms_records <<- data.frame(name = taxa_names, status = "no content", AphiaID = NA, class = NA, stringsAsFactors = FALSE)
+        worms_records <<- tibble(name = taxa_names, status = "no content", AphiaID = NA, class = NA)
         success <<- TRUE  # Prevent further retries
       } else if (grepl("404", error_message)) {
         no_content_messages <<- c(no_content_messages, "WoRMS record not found for some taxa.")
-        worms_records <<- data.frame(name = taxa_names, status = "not found", AphiaID = NA, class = NA, stringsAsFactors = FALSE)
+        worms_records <<- tibble(name = taxa_names, status = "not found", AphiaID = NA, class = NA)
         success <<- TRUE  # Prevent further retries
       } else if (attempt == max_retries) {
         stop("Error retrieving WoRMS records after ", max_retries, " attempts: ", error_message)
@@ -92,7 +100,7 @@ ifcb_match_taxa_names <- function(taxa_names, best_match_only = TRUE, max_retrie
 
   # If still NULL after retries, insert NA
   if (is.null(worms_records)) {
-    worms_records <- data.frame(name = taxa_names, status = "Failed", AphiaID = NA, class = NA, stringsAsFactors = FALSE)
+    worms_records <- tibble(name = taxa_names, status = "Failed", AphiaID = NA, class = NA)
   }
 
   if (verbose && length(no_content_messages) > 0) {

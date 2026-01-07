@@ -7,12 +7,14 @@
 #'
 #' @return A data frame containing the exported metadata.
 #' @examples
-#' \dontrun{
-#'   # Download all metadata
-#'   metadata_all <- ifcb_download_dashboard_metadata("https://ifcb-data.whoi.edu/")
-#'
+#' \donttest{
 #'   # Download metadata for a specific dataset
-#'   metadata_mvco <- ifcb_download_dashboard_metadata("https://ifcb-data.whoi.edu/", "mvco")
+#'   metadata_mvco <- ifcb_download_dashboard_metadata("https://ifcb-data.whoi.edu/",
+#'                                                     dataset_name = "mvco",
+#'                                                     quiet = TRUE)
+#'
+#'   # Print result as tibble
+#'   print(metadata_mvco)
 #' }
 #'
 #' @seealso [ifcb_download_dashboard_data()] to download data from the IFCB Dashboard API.
@@ -49,9 +51,15 @@ ifcb_download_dashboard_metadata <- function(base_url, dataset_name = NULL, quie
 
   # Parse CSV
   df <- tryCatch(
-    read.csv(text = csv_content, stringsAsFactors = FALSE),
+    readr::read_csv(csv_content,
+                    show_col_types = FALSE,
+                    progress = FALSE,
+                    col_types = cols(.default = col_character())),
     error = function(e) stop("Failed to parse CSV content: ", e$message)
   )
+
+  df <- type_convert(df,
+                     col_types = cols())
 
   if (!quiet) {
     message("Successfully retrieved ", nrow(df), " records",
