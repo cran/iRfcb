@@ -1,7 +1,7 @@
 ## ----include = FALSE----------------------------------------------------------
-is_cran <- identical(Sys.getenv("NOT_CRAN"), "false")
+NOT_CRAN <- identical(Sys.getenv("NOT_CRAN"), "true")
 knitr::opts_chunk$set(
-  eval = !is_cran
+  eval = NOT_CRAN
 )
 
 ## ----eval=FALSE---------------------------------------------------------------
@@ -88,6 +88,57 @@ ifcb_extract_pngs(
 # Only ROI number 2 and 5
 ifcb_extract_pngs("data/data/2023/D20230314/D20230314T003836_IFCB134.roi",
                   ROInumbers = c(2, 5))
+
+## ----eval=FALSE---------------------------------------------------------------
+# ifcb_classify_models()
+
+## ----eval=FALSE---------------------------------------------------------------
+# # Classify all images in a sample
+# results <- ifcb_classify_sample(
+#   "data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
+#   verbose = FALSE
+# )
+# 
+# # Print result
+# print(results)
+
+## ----eval=FALSE---------------------------------------------------------------
+# # List extracted PNG files
+# png_files <- list.files(
+#   "data/data/2023/D20230314/D20230314T001205_IFCB134",
+#   pattern = "\\.png$",
+#   full.names = TRUE
+# )
+# 
+# # Classify images
+# results <- ifcb_classify_images(png_files, verbose = FALSE)
+# 
+# # Print result
+# print(results)
+
+## ----eval=FALSE---------------------------------------------------------------
+# # HDF5 (default) - IFCB Dashboard v3 format (requires hdf5r package)
+# ifcb_save_classification(
+#   "data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
+#   output_folder = "output"
+# )
+# # Creates: output/D20230314T001205_IFCB134_class.h5
+# 
+# # MAT - IFCB Dashboard v1 format (requires Python with scipy)
+# ifcb_save_classification(
+#   "data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
+#   output_folder = "output",
+#   format = "mat"
+# )
+# # Creates: output/D20230314T001205_IFCB134_class_v1.mat
+# 
+# # CSV - ClassiPyR-compatible format
+# ifcb_save_classification(
+#   "data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
+#   output_folder = "output",
+#   format = "csv"
+# )
+# # Creates: output/D20230314T001205_IFCB134.csv
 
 ## -----------------------------------------------------------------------------
 # Example taxa names
