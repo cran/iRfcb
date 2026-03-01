@@ -1,8 +1,8 @@
-b2e4205cb448b30fcfffd1291c67fe5a *DESCRIPTION
+a518fb32dcea848fdb346b714617436e *DESCRIPTION
 fd3a513c0ea030f193b57db4ed01b80b *LICENSE
 d049dc428f504078caf98c13ea117dbf *LICENSE.note
 5257f1c93d102e834cab433d83e33e45 *NAMESPACE
-effae24e78baad3c5bfb73074ec86636 *NEWS.md
+d84ed872ebb519144c282e2edfc12243 *NEWS.md
 6a7ef75815a5d847b8eea80e5f1d6d3d *R/defunct.R
 bc1d0f99e65de8025f455ec531f4efd9 *R/iRfcb-package.R
 1dee56de0473a7639f78af7d7ff89d44 *R/ifcb_adjust_classes.R
@@ -34,7 +34,7 @@ dc573f025fd867b23bc15228330f78f9 *R/ifcb_extract_classified_images.R
 43486133468fed086fa018ee2c143584 *R/ifcb_get_shark_colnames.R
 c8b0b2320dce7524ea5696700c3916fc *R/ifcb_get_shark_example.R
 84d4e1333094d9752eeec8e7d3a217f1 *R/ifcb_get_trophic_type.R
-784ef2447715e76444527dfa6559e9f1 *R/ifcb_helper_functions.R
+6b264b963a59e8a35a764cd6e623e50b *R/ifcb_helper_functions.R
 bbead3a3c03b6ef0018b6ce1fa1b2e19 *R/ifcb_is_diatom.R
 83d6592329e8c2c2fea8cf9aca562db7 *R/ifcb_is_in_basin.R
 b937484061c003425c231923e65fc908 *R/ifcb_is_near_land.R
@@ -66,11 +66,11 @@ e629058e76fbc91d41f803d1d9900f5b *R/zzz.R
 83c57ad49cd4dadf22f793b055951100 *README.md
 76e123f5dcc8dee07678412adc0a2a84 *build/partial.rdb
 7a9ced3f49be7fc2305b448428ab7448 *build/vignette.rds
-dbb33724be32cf616c8172ace4d97750 *inst/CITATION
+14a194b2281b3d29221608b83f1f0b9e *inst/CITATION
 814579d3615338f2a0f929f8f5df2027 *inst/WORDLIST
 4323a2f787fa1caa4e7fcf83054c81fb *inst/doc/introduction.R
 f1f8ee27cc6e50de7cb61bcef000512a *inst/doc/introduction.Rmd
-548988c03f2a6c2a2d5021e912dc9350 *inst/doc/introduction.html
+6d0d867a9f5547cf96d6ec6f60ff1fef *inst/doc/introduction.html
 d41d8cd98f00b204e9800998ecf8427e *inst/exdata/D20220124T144202_IFCB139.mat
 566ad4aa01c9a5170589f7f41bc48d73 *inst/exdata/MATLAB-template.md
 6b1f12299c12d4c60605c53576b09180 *inst/exdata/README-template.md
