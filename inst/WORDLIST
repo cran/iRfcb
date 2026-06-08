@@ -23,6 +23,7 @@ EEA
 EML
 EMODNet
 EPSG
+ESC
 ESD
 EUDAT
 EcoTaxa
@@ -106,6 +107,7 @@ Uuid
 ValidatedByHuman
 Velhonoja
 WHOI
+WHOIGit
 WoRMS
 YYYY
 Ylöstalo
@@ -152,6 +154,7 @@ identificationReferences
 identificationVerificationStatus
 identifiedBy
 ifcb
+ifcbdb
 inhibittime
 institutionID
 interoperable
@@ -199,6 +202,7 @@ unannotated
 unselect
 venv
 verbatimIdentification
+virtualenv
 virtualenvs
 whoi
 xxxx

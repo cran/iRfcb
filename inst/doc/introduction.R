@@ -60,6 +60,22 @@ run_time <- ifcb_get_runtime(hdr_file)
 # Print result
 print(run_time)
 
+## ----eval=FALSE---------------------------------------------------------------
+# # Install the Python environment including ifcb-features
+# ifcb_py_install(features = TRUE)
+
+## ----eval=FALSE---------------------------------------------------------------
+# # Extract features and blobs into separate folders
+# results <- ifcb_extract_features(
+#   data_folder = "data/data/2023",
+#   features_folder = "data/features/2023",
+#   blobs_folder = "data/blobs/2023",
+#   parallel = TRUE # Process bins in parallel (default FALSE)
+# )
+# 
+# # A tibble summarizing the status of each bin is returned invisibly
+# print(results)
+
 ## -----------------------------------------------------------------------------
 # Read feature files from a folder
 features <- ifcb_read_features("data/features/2023/",

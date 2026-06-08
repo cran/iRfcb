@@ -458,15 +458,50 @@ added to the output.</p>
 ## $inhibittime
 ## [1] 104.3704</code></pre>
 </div>
+<div id="extract-feature-data" class="section level3">
+<h3>Extract Feature Data</h3>
+<p>Morphological features can be computed directly from raw IFCB data in
+R using the WHOI <a href="https://github.com/WHOIGit/ifcb-features"><code>ifcb-features</code></a>
+Python package, without running the MATLAB <a href="https://github.com/hsosik/ifcb-analysis"><code>ifcb-analysis</code></a>
+toolbox. The <code>ifcb_extract_features()</code> function computes the
+“slim” feature set (version 4) and binary blob masks for each bin,
+writing a <code>&lt;bin&gt;_features_v4.csv</code> table and a
+<code>&lt;bin&gt;_blobs_v4.zip</code> archive to separate,
+user-specified folders.</p>
+<p>This requires the optional <code>ifcb-features</code> package, which
+is installed alongside its dependencies (<code>pyifcb</code>,
+<code>phasepack</code>, <code>scikit-image</code>,
+<code>scikit-learn</code>) by passing <code>features = TRUE</code> to
+<code>ifcb_py_install()</code>:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># Install the Python environment including ifcb-features</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="fu">ifcb_py_install</span>(<span class="at">features =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>Extract features and blobs from all bins found in a data folder.
+Existing outputs are skipped unless <code>overwrite = TRUE</code>, so
+the call can be re-run to resume an interrupted extraction. Set
+<code>parallel = TRUE</code> to distribute bins across worker
+processes:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># Extract features and blobs into separate folders</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">ifcb_extract_features</span>(</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  <span class="at">data_folder =</span> <span class="st">&quot;data/data/2023&quot;</span>,</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>  <span class="at">features_folder =</span> <span class="st">&quot;data/features/2023&quot;</span>,</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>  <span class="at">blobs_folder =</span> <span class="st">&quot;data/blobs/2023&quot;</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>  <span class="at">parallel =</span> <span class="cn">TRUE</span> <span class="co"># Process bins in parallel (default FALSE)</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a>)</span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co"># A tibble summarizing the status of each bin is returned invisibly</span></span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+<p>The resulting <code>.csv</code> files can then be read back in with
+<code>ifcb_read_features()</code>, as shown below.</p>
+</div>
 <div id="read-feature-data" class="section level3">
 <h3>Read Feature Data</h3>
 <p>Read all feature files (<code>.csv</code>) from a folder:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># Read feature files from a folder</span></span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>features <span class="ot">&lt;-</span> <span class="fu">ifcb_read_features</span>(<span class="st">&quot;data/features/2023/&quot;</span>,</span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>                               <span class="at">verbose =</span> <span class="cn">FALSE</span>) <span class="co"># Do not print progress bar</span></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a></span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="co"># Print output from the first sample in the list</span></span>
-<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="fu">print</span>(features[[<span class="dv">1</span>]])</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Read feature files from a folder</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>features <span class="ot">&lt;-</span> <span class="fu">ifcb_read_features</span>(<span class="st">&quot;data/features/2023/&quot;</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>                               <span class="at">verbose =</span> <span class="cn">FALSE</span>) <span class="co"># Do not print progress bar</span></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co"># Print output from the first sample in the list</span></span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="fu">print</span>(features[[<span class="dv">1</span>]])</span></code></pre></div>
 <pre><code>## # A tibble: 1,218 × 237
 ##    roi_number  Area Biovolume BoundingBox_xwidth BoundingBox_ywidth ConvexArea
 ##         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;              &lt;dbl&gt;              &lt;dbl&gt;      &lt;dbl&gt;
@@ -487,13 +522,13 @@ added to the output.</p>
 ## #   Orientation &lt;dbl&gt;, Perimeter &lt;dbl&gt;, RWcenter2total_powerratio &lt;dbl&gt;,
 ## #   RWhalfpowerintegral &lt;dbl&gt;, Solidity &lt;dbl&gt;, moment_invariant1 &lt;dbl&gt;,
 ## #   moment_invariant2 &lt;dbl&gt;, moment_invariant3 &lt;dbl&gt;, …</code></pre>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Read only multiblob feature files</span></span>
-<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>multiblob_features <span class="ot">&lt;-</span> <span class="fu">ifcb_read_features</span>(<span class="st">&quot;data/features/2023&quot;</span>, </span>
-<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>                                         <span class="at">multiblob =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>                                         <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a></span>
-<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co"># Print output from the first sample in the list</span></span>
-<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="fu">print</span>(multiblob_features[[<span class="dv">1</span>]])</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># Read only multiblob feature files</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>multiblob_features <span class="ot">&lt;-</span> <span class="fu">ifcb_read_features</span>(<span class="st">&quot;data/features/2023&quot;</span>, </span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>                                         <span class="at">multiblob =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>                                         <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a><span class="co"># Print output from the first sample in the list</span></span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a><span class="fu">print</span>(multiblob_features[[<span class="dv">1</span>]])</span></code></pre></div>
 <pre><code>## # A tibble: 26 × 22
 ##    roi_number blob_number  Area MajorAxisLength MinorAxisLength Eccentricity
 ##         &lt;dbl&gt;       &lt;dbl&gt; &lt;dbl&gt;           &lt;dbl&gt;           &lt;dbl&gt;        &lt;dbl&gt;
@@ -528,18 +563,20 @@ subdirectory within the same directory as the ROI file. The
 <code>gamma</code> can be adjusted to enhance image contrast, and an
 optional scale bar can be added by specifying
 <code>scale_bar_um</code>.</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># All ROIs in sample</span></span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a><span class="fu">ifcb_extract_pngs</span>(</span>
-<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
-<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>  <span class="at">gamma =</span> <span class="dv">1</span>, <span class="co"># Default gamma value</span></span>
-<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>  <span class="at">scale_bar_um =</span> <span class="dv">5</span> <span class="co"># Add a 5 micrometer scale bar</span></span>
-<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>) </span></code></pre></div>
-<pre><code>## Writing 1218 ROIs from D20230314T001205_IFCB134.roi to data/data/2023/D20230314/D20230314T001205_IFCB134</code></pre>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="co"># All ROIs in sample</span></span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a><span class="fu">ifcb_extract_pngs</span>(</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>  <span class="at">gamma =</span> <span class="dv">1</span>, <span class="co"># Default gamma value</span></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>  <span class="at">scale_bar_um =</span> <span class="dv">5</span> <span class="co"># Add a 5 micrometer scale bar</span></span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>) </span></code></pre></div>
+<pre><code>## Writing 1218 ROIs from &#39;D20230314T001205_IFCB134.roi&#39; to
+## &#39;data/data/2023/D20230314/D20230314T001205_IFCB134&#39;</code></pre>
 <p>Extract specific ROIs:</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="co"># Only ROI number 2 and 5</span></span>
-<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a><span class="fu">ifcb_extract_pngs</span>(<span class="st">&quot;data/data/2023/D20230314/D20230314T003836_IFCB134.roi&quot;</span>,</span>
-<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>                  <span class="at">ROInumbers =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>))</span></code></pre></div>
-<pre><code>## Writing 2 ROIs from D20230314T003836_IFCB134.roi to data/data/2023/D20230314/D20230314T003836_IFCB134</code></pre>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="co"># Only ROI number 2 and 5</span></span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a><span class="fu">ifcb_extract_pngs</span>(<span class="st">&quot;data/data/2023/D20230314/D20230314T003836_IFCB134.roi&quot;</span>,</span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a>                  <span class="at">ROInumbers =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>))</span></code></pre></div>
+<pre><code>## Writing 2 ROIs from &#39;D20230314T003836_IFCB134.roi&#39; to
+## &#39;data/data/2023/D20230314/D20230314T003836_IFCB134&#39;</code></pre>
 <p>To extract annotated images or classified results from MATLAB files,
 please see the <code>vignette(&quot;image-export-tutorial&quot;)</code> and
 <code>vignette(&quot;matlab-tutorial&quot;)</code> tutorials.</p>
@@ -548,53 +585,56 @@ please see the <code>vignette(&quot;image-export-tutorial&quot;)</code> and
 <h2>Classify IFCB Images</h2>
 <p>IFCB images can be classified directly in R using a CNN model served
 by a <a href="https://www.gradio.app/">Gradio</a> application. By
-default, the classification functions use a public example Space hosted
-on Hugging Face (<code>https://irfcb-classify.hf.space</code>). This
-Space has limited resources and is intended for testing and
-demonstration purposes. For large-scale or production classification, we
-recommend deploying your own instance of the <a href="https://github.com/EuropeanIFCBGroup/ifcb-inference-app">IFCB
+default, the classification functions use an instance hosted on the
+SciLifeLab Serve platform
+(<code>https://ifcb.serve.scilifelab.se</code>). A free example Space is
+also available on Hugging Face
+(<code>https://irfcb-classify.hf.space</code>); it has limited resources
+and is intended for testing and demonstration purposes. For large-scale
+or production classification, we recommend deploying your own instance
+of the <a href="https://github.com/EuropeanIFCBGroup/ifcb-inference-app">IFCB
 Classification App</a> with your own model and passing its URL via the
 <code>gradio_url</code> argument.</p>
 <div id="available-models" class="section level3">
 <h3>Available Models</h3>
 <p>Use <code>ifcb_classify_models()</code> to list the CNN models
 available on the Gradio server:</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="fu">ifcb_classify_models</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a><span class="fu">ifcb_classify_models</span>()</span></code></pre></div>
 </div>
 <div id="classify-all-images-in-a-sample" class="section level3">
 <h3>Classify All Images in a Sample</h3>
 <p><code>ifcb_classify_sample()</code> extracts images from a
 <code>.roi</code> file internally and returns predictions without
 requiring a separate extraction step:</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="co"># Classify all images in a sample</span></span>
-<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">ifcb_classify_sample</span>(</span>
-<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
-<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a>  <span class="at">verbose =</span> <span class="cn">FALSE</span></span>
-<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>)</span>
-<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a></span>
-<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a><span class="co"># Print result</span></span>
-<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="co"># Classify all images in a sample</span></span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">ifcb_classify_sample</span>(</span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
+<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a>  <span class="at">verbose =</span> <span class="cn">FALSE</span></span>
+<span id="cb27-5"><a href="#cb27-5" tabindex="-1"></a>)</span>
+<span id="cb27-6"><a href="#cb27-6" tabindex="-1"></a></span>
+<span id="cb27-7"><a href="#cb27-7" tabindex="-1"></a><span class="co"># Print result</span></span>
+<span id="cb27-8"><a href="#cb27-8" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
 </div>
 <div id="classify-pre-extracted-png-images" class="section level3">
 <h3>Classify Pre-extracted PNG Images</h3>
 <p>If images have already been extracted, pass a vector of PNG file
 paths to <code>ifcb_classify_images()</code>:</p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a><span class="co"># List extracted PNG files</span></span>
-<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a>png_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(</span>
-<span id="cb26-3"><a href="#cb26-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134&quot;</span>,</span>
-<span id="cb26-4"><a href="#cb26-4" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.png$&quot;</span>,</span>
-<span id="cb26-5"><a href="#cb26-5" tabindex="-1"></a>  <span class="at">full.names =</span> <span class="cn">TRUE</span></span>
-<span id="cb26-6"><a href="#cb26-6" tabindex="-1"></a>)</span>
-<span id="cb26-7"><a href="#cb26-7" tabindex="-1"></a></span>
-<span id="cb26-8"><a href="#cb26-8" tabindex="-1"></a><span class="co"># Classify images</span></span>
-<span id="cb26-9"><a href="#cb26-9" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">ifcb_classify_images</span>(png_files, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb26-10"><a href="#cb26-10" tabindex="-1"></a></span>
-<span id="cb26-11"><a href="#cb26-11" tabindex="-1"></a><span class="co"># Print result</span></span>
-<span id="cb26-12"><a href="#cb26-12" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="co"># List extracted PNG files</span></span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>png_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(</span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134&quot;</span>,</span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.png$&quot;</span>,</span>
+<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>  <span class="at">full.names =</span> <span class="cn">TRUE</span></span>
+<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a>)</span>
+<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a></span>
+<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a><span class="co"># Classify images</span></span>
+<span id="cb28-9"><a href="#cb28-9" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">ifcb_classify_images</span>(png_files, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb28-10"><a href="#cb28-10" tabindex="-1"></a></span>
+<span id="cb28-11"><a href="#cb28-11" tabindex="-1"></a><span class="co"># Print result</span></span>
+<span id="cb28-12"><a href="#cb28-12" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
 <p>Both functions return a data frame with <code>file_name</code>,
 <code>class_name</code>, <code>class_name_auto</code>,
 <code>score</code>, and <code>model_name</code> columns, and query the
-Gradio API at <code>https://irfcb-classify.hf.space</code> by default.
+Gradio API at <code>https://ifcb.serve.scilifelab.se</code> by default.
 Per-class F2 optimal thresholds are always applied:
 <code>class_name</code> contains the threshold-applied classification
 (labeled <code>&quot;unclassified&quot;</code> when below threshold), while
@@ -602,35 +642,35 @@ Per-class F2 optimal thresholds are always applied:
 threshold. The <code>top_n</code> argument controls how many top
 predictions are returned per image, and <code>model_name</code>
 specifies which CNN model to use (default:
-<code>&quot;SMHI NIVA ResNet50 V5&quot;</code>).</p>
+<code>&quot;SMHI NIVA SYKE SAMS SZN ResNet 50 V6&quot;</code>).</p>
 </div>
 <div id="save-classification-results" class="section level3">
 <h3>Save Classification Results</h3>
 <p><code>ifcb_save_classification()</code> classifies all images in a
 <code>.roi</code> file and saves the full score matrix. Three output
 formats are supported via the <code>format</code> argument:</p>
-<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="co"># HDF5 (default) - IFCB Dashboard v3 format (requires hdf5r package)</span></span>
-<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
-<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
-<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span></span>
-<span id="cb27-5"><a href="#cb27-5" tabindex="-1"></a>)</span>
-<span id="cb27-6"><a href="#cb27-6" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134_class.h5</span></span>
-<span id="cb27-7"><a href="#cb27-7" tabindex="-1"></a></span>
-<span id="cb27-8"><a href="#cb27-8" tabindex="-1"></a><span class="co"># MAT - IFCB Dashboard v1 format (requires Python with scipy)</span></span>
-<span id="cb27-9"><a href="#cb27-9" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
-<span id="cb27-10"><a href="#cb27-10" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
-<span id="cb27-11"><a href="#cb27-11" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span>,</span>
-<span id="cb27-12"><a href="#cb27-12" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;mat&quot;</span></span>
-<span id="cb27-13"><a href="#cb27-13" tabindex="-1"></a>)</span>
-<span id="cb27-14"><a href="#cb27-14" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134_class_v1.mat</span></span>
-<span id="cb27-15"><a href="#cb27-15" tabindex="-1"></a></span>
-<span id="cb27-16"><a href="#cb27-16" tabindex="-1"></a><span class="co"># CSV - ClassiPyR-compatible format</span></span>
-<span id="cb27-17"><a href="#cb27-17" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
-<span id="cb27-18"><a href="#cb27-18" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
-<span id="cb27-19"><a href="#cb27-19" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span>,</span>
-<span id="cb27-20"><a href="#cb27-20" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;csv&quot;</span></span>
-<span id="cb27-21"><a href="#cb27-21" tabindex="-1"></a>)</span>
-<span id="cb27-22"><a href="#cb27-22" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134.csv</span></span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="co"># HDF5 (default) - IFCB Dashboard v3 format (requires hdf5r package)</span></span>
+<span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
+<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
+<span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span></span>
+<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>)</span>
+<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134_class.h5</span></span>
+<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a></span>
+<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="co"># MAT - IFCB Dashboard v1 format (requires Python with scipy)</span></span>
+<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
+<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
+<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span>,</span>
+<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;mat&quot;</span></span>
+<span id="cb29-13"><a href="#cb29-13" tabindex="-1"></a>)</span>
+<span id="cb29-14"><a href="#cb29-14" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134_class_v1.mat</span></span>
+<span id="cb29-15"><a href="#cb29-15" tabindex="-1"></a></span>
+<span id="cb29-16"><a href="#cb29-16" tabindex="-1"></a><span class="co"># CSV - ClassiPyR-compatible format</span></span>
+<span id="cb29-17"><a href="#cb29-17" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
+<span id="cb29-18"><a href="#cb29-18" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
+<span id="cb29-19"><a href="#cb29-19" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span>,</span>
+<span id="cb29-20"><a href="#cb29-20" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;csv&quot;</span></span>
+<span id="cb29-21"><a href="#cb29-21" tabindex="-1"></a>)</span>
+<span id="cb29-22"><a href="#cb29-22" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134.csv</span></span></code></pre></div>
 <p>The output file contains <code>output_scores</code> (N x C matrix),
 <code>class_labels</code>, <code>roi_numbers</code>, per-class
 <code>thresholds</code>, and
@@ -657,15 +697,15 @@ particularly useful for automated data pipelines. For additional tools
 and functionality, the R package <a href="https://cran.r-project.org/package=worrms"><code>worrms</code></a>
 provides a comprehensive suite of options for interacting with the WoRMS
 database.</p>
-<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="co"># Example taxa names</span></span>
-<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>taxa_names <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Alexandrium_pseudogonyaulax&quot;</span>, <span class="st">&quot;Guinardia_delicatula&quot;</span>)</span>
-<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a></span>
-<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a><span class="co"># Retrieve WoRMS records</span></span>
-<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>worms_records <span class="ot">&lt;-</span> <span class="fu">ifcb_match_taxa_names</span>(taxa_names, </span>
-<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a>                                       <span class="at">verbose =</span> <span class="cn">FALSE</span>) <span class="co"># Do not print progress bar</span></span>
-<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a></span>
-<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a><span class="co"># Print result</span></span>
-<span id="cb28-9"><a href="#cb28-9" tabindex="-1"></a><span class="fu">print</span>(worms_records)</span></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="co"># Example taxa names</span></span>
+<span id="cb30-2"><a href="#cb30-2" tabindex="-1"></a>taxa_names <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Alexandrium_pseudogonyaulax&quot;</span>, <span class="st">&quot;Guinardia_delicatula&quot;</span>)</span>
+<span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" tabindex="-1"></a><span class="co"># Retrieve WoRMS records</span></span>
+<span id="cb30-5"><a href="#cb30-5" tabindex="-1"></a>worms_records <span class="ot">&lt;-</span> <span class="fu">ifcb_match_taxa_names</span>(taxa_names, </span>
+<span id="cb30-6"><a href="#cb30-6" tabindex="-1"></a>                                       <span class="at">verbose =</span> <span class="cn">FALSE</span>) <span class="co"># Do not print progress bar</span></span>
+<span id="cb30-7"><a href="#cb30-7" tabindex="-1"></a></span>
+<span id="cb30-8"><a href="#cb30-8" tabindex="-1"></a><span class="co"># Print result</span></span>
+<span id="cb30-9"><a href="#cb30-9" tabindex="-1"></a><span class="fu">print</span>(worms_records)</span></code></pre></div>
 <pre><code>## # A tibble: 2 × 29
 ##   name  AphiaID url   scientificname authority status unacceptreason taxonRankID
 ##   &lt;chr&gt;   &lt;int&gt; &lt;chr&gt; &lt;chr&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;lgl&gt;                &lt;int&gt;
@@ -688,15 +728,15 @@ can be useful for converting biovolumes to carbon according to
 Menden-Deuer and Lessard (2000). See <code>vol2C_nondiatom()</code> and
 <code>vol2C_lgdiatom()</code> for carbon calculations (not included in
 NAMESPACE).</p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="co"># Read class2use file and select five taxa</span></span>
-<span id="cb30-2"><a href="#cb30-2" tabindex="-1"></a>class2use <span class="ot">&lt;-</span> <span class="fu">ifcb_get_mat_variable</span>(<span class="st">&quot;data/config/class2use.mat&quot;</span>)[<span class="dv">10</span><span class="sc">:</span><span class="dv">15</span>]</span>
-<span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a></span>
-<span id="cb30-4"><a href="#cb30-4" tabindex="-1"></a><span class="co"># Create a dataframe with class name and result from `ifcb_is_diatom`</span></span>
-<span id="cb30-5"><a href="#cb30-5" tabindex="-1"></a>class_list <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(class2use,</span>
-<span id="cb30-6"><a href="#cb30-6" tabindex="-1"></a>                         <span class="at">is_diatom =</span> <span class="fu">ifcb_is_diatom</span>(class2use, <span class="at">verbose =</span> <span class="cn">FALSE</span>))</span>
-<span id="cb30-7"><a href="#cb30-7" tabindex="-1"></a></span>
-<span id="cb30-8"><a href="#cb30-8" tabindex="-1"></a><span class="co"># Print rows 10-15 of result</span></span>
-<span id="cb30-9"><a href="#cb30-9" tabindex="-1"></a><span class="fu">print</span>(class_list)</span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="co"># Read class2use file and select five taxa</span></span>
+<span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a>class2use <span class="ot">&lt;-</span> <span class="fu">ifcb_get_mat_variable</span>(<span class="st">&quot;data/config/class2use.mat&quot;</span>)[<span class="dv">10</span><span class="sc">:</span><span class="dv">15</span>]</span>
+<span id="cb32-3"><a href="#cb32-3" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" tabindex="-1"></a><span class="co"># Create a dataframe with class name and result from `ifcb_is_diatom`</span></span>
+<span id="cb32-5"><a href="#cb32-5" tabindex="-1"></a>class_list <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(class2use,</span>
+<span id="cb32-6"><a href="#cb32-6" tabindex="-1"></a>                         <span class="at">is_diatom =</span> <span class="fu">ifcb_is_diatom</span>(class2use, <span class="at">verbose =</span> <span class="cn">FALSE</span>))</span>
+<span id="cb32-7"><a href="#cb32-7" tabindex="-1"></a></span>
+<span id="cb32-8"><a href="#cb32-8" tabindex="-1"></a><span class="co"># Print rows 10-15 of result</span></span>
+<span id="cb32-9"><a href="#cb32-9" tabindex="-1"></a><span class="fu">print</span>(class_list)</span></code></pre></div>
 <pre><code>##                    class2use is_diatom
 ## 1        Nodularia_spumigena     FALSE
 ## 2            Cryptomonadales     FALSE
@@ -711,20 +751,20 @@ may be adjusted using the <code>diatom_class</code> argument.</p>
 <h3>Find trophic type of plankton taxa</h3>
 <p>This function takes a list of taxa names and matches them with the
 <strong>SMHI Trophic Type</strong> list used in <a href="https://shark.smhi.se/en/">SHARK</a>.</p>
-<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="co"># Example taxa names</span></span>
-<span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a>taxa_list <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb32-3"><a href="#cb32-3" tabindex="-1"></a>  <span class="st">&quot;Acanthoceras zachariasii&quot;</span>,</span>
-<span id="cb32-4"><a href="#cb32-4" tabindex="-1"></a>  <span class="st">&quot;Nodularia spumigena&quot;</span>,</span>
-<span id="cb32-5"><a href="#cb32-5" tabindex="-1"></a>  <span class="st">&quot;Acanthoica quattrospina&quot;</span>,</span>
-<span id="cb32-6"><a href="#cb32-6" tabindex="-1"></a>  <span class="st">&quot;Noctiluca&quot;</span>,</span>
-<span id="cb32-7"><a href="#cb32-7" tabindex="-1"></a>  <span class="st">&quot;Gymnodiniales&quot;</span></span>
-<span id="cb32-8"><a href="#cb32-8" tabindex="-1"></a>)</span>
-<span id="cb32-9"><a href="#cb32-9" tabindex="-1"></a></span>
-<span id="cb32-10"><a href="#cb32-10" tabindex="-1"></a><span class="co"># Get trophic type for taxa</span></span>
-<span id="cb32-11"><a href="#cb32-11" tabindex="-1"></a>trophic_type <span class="ot">&lt;-</span> <span class="fu">ifcb_get_trophic_type</span>(taxa_list)</span>
-<span id="cb32-12"><a href="#cb32-12" tabindex="-1"></a></span>
-<span id="cb32-13"><a href="#cb32-13" tabindex="-1"></a><span class="co"># Print result</span></span>
-<span id="cb32-14"><a href="#cb32-14" tabindex="-1"></a><span class="fu">print</span>(trophic_type)</span></code></pre></div>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a><span class="co"># Example taxa names</span></span>
+<span id="cb34-2"><a href="#cb34-2" tabindex="-1"></a>taxa_list <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb34-3"><a href="#cb34-3" tabindex="-1"></a>  <span class="st">&quot;Acanthoceras zachariasii&quot;</span>,</span>
+<span id="cb34-4"><a href="#cb34-4" tabindex="-1"></a>  <span class="st">&quot;Nodularia spumigena&quot;</span>,</span>
+<span id="cb34-5"><a href="#cb34-5" tabindex="-1"></a>  <span class="st">&quot;Acanthoica quattrospina&quot;</span>,</span>
+<span id="cb34-6"><a href="#cb34-6" tabindex="-1"></a>  <span class="st">&quot;Noctiluca&quot;</span>,</span>
+<span id="cb34-7"><a href="#cb34-7" tabindex="-1"></a>  <span class="st">&quot;Gymnodiniales&quot;</span></span>
+<span id="cb34-8"><a href="#cb34-8" tabindex="-1"></a>)</span>
+<span id="cb34-9"><a href="#cb34-9" tabindex="-1"></a></span>
+<span id="cb34-10"><a href="#cb34-10" tabindex="-1"></a><span class="co"># Get trophic type for taxa</span></span>
+<span id="cb34-11"><a href="#cb34-11" tabindex="-1"></a>trophic_type <span class="ot">&lt;-</span> <span class="fu">ifcb_get_trophic_type</span>(taxa_list)</span>
+<span id="cb34-12"><a href="#cb34-12" tabindex="-1"></a></span>
+<span id="cb34-13"><a href="#cb34-13" tabindex="-1"></a><span class="co"># Print result</span></span>
+<span id="cb34-14"><a href="#cb34-14" tabindex="-1"></a><span class="fu">print</span>(trophic_type)</span></code></pre></div>
 <pre><code>## [1] &quot;AU&quot; &quot;AU&quot; &quot;MX&quot; &quot;HT&quot; &quot;NS&quot;</code></pre>
 </div>
 </div>
@@ -733,11 +773,11 @@ may be adjusted using the <code>diatom_class</code> argument.</p>
 <p>This function is used by SMHI to map IFCB data into the <a href="https://shark.smhi.se/hamta-data/">SHARK</a> standard data
 delivery format. An example submission is also provided in
 <code>iRfcb</code>.</p>
-<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a><span class="co"># Get column names from example</span></span>
-<span id="cb34-2"><a href="#cb34-2" tabindex="-1"></a>shark_colnames <span class="ot">&lt;-</span> <span class="fu">ifcb_get_shark_colnames</span>()</span>
-<span id="cb34-3"><a href="#cb34-3" tabindex="-1"></a></span>
-<span id="cb34-4"><a href="#cb34-4" tabindex="-1"></a><span class="co"># Print column names</span></span>
-<span id="cb34-5"><a href="#cb34-5" tabindex="-1"></a><span class="fu">print</span>(shark_colnames)</span></code></pre></div>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="co"># Get column names from example</span></span>
+<span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a>shark_colnames <span class="ot">&lt;-</span> <span class="fu">ifcb_get_shark_colnames</span>()</span>
+<span id="cb36-3"><a href="#cb36-3" tabindex="-1"></a></span>
+<span id="cb36-4"><a href="#cb36-4" tabindex="-1"></a><span class="co"># Print column names</span></span>
+<span id="cb36-5"><a href="#cb36-5" tabindex="-1"></a><span class="fu">print</span>(shark_colnames)</span></code></pre></div>
 <pre><code>## # A tibble: 0 × 67
 ## # ℹ 67 variables: MYEAR &lt;dbl&gt;, STATN &lt;chr&gt;, SAMPLING_PLATFORM &lt;chr&gt;,
 ## #   PROJ &lt;chr&gt;, ORDERER &lt;chr&gt;, SHIPC &lt;chr&gt;, CRUISE_NO &lt;dbl&gt;, DATE_TIME &lt;dbl&gt;,
@@ -746,11 +786,11 @@ delivery format. An example submission is also provided in
 ## #   SLABO &lt;chr&gt;, ACKR_SMP &lt;chr&gt;, SMTYP &lt;chr&gt;, PDMET &lt;chr&gt;, SMVOL &lt;dbl&gt;,
 ## #   METFP &lt;chr&gt;, IFCBNO &lt;chr&gt;, SMPNO &lt;chr&gt;, LATNM &lt;chr&gt;, SFLAG &lt;chr&gt;,
 ## #   LATNM_SFLAG &lt;chr&gt;, TRPHY &lt;chr&gt;, APHIA_ID &lt;dbl&gt;, IMAGE_VERIFICATION &lt;chr&gt;, …</code></pre>
-<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="co"># Load example stored from `iRfcb`</span></span>
-<span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a>shark_example <span class="ot">&lt;-</span> <span class="fu">ifcb_get_shark_example</span>()</span>
-<span id="cb36-3"><a href="#cb36-3" tabindex="-1"></a></span>
-<span id="cb36-4"><a href="#cb36-4" tabindex="-1"></a><span class="co"># Print the SHARK data submission example</span></span>
-<span id="cb36-5"><a href="#cb36-5" tabindex="-1"></a><span class="fu">print</span>(shark_example)</span></code></pre></div>
+<div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" tabindex="-1"></a><span class="co"># Load example stored from `iRfcb`</span></span>
+<span id="cb38-2"><a href="#cb38-2" tabindex="-1"></a>shark_example <span class="ot">&lt;-</span> <span class="fu">ifcb_get_shark_example</span>()</span>
+<span id="cb38-3"><a href="#cb38-3" tabindex="-1"></a></span>
+<span id="cb38-4"><a href="#cb38-4" tabindex="-1"></a><span class="co"># Print the SHARK data submission example</span></span>
+<span id="cb38-5"><a href="#cb38-5" tabindex="-1"></a><span class="fu">print</span>(shark_example)</span></code></pre></div>
 <pre><code>## # A tibble: 5 × 67
 ##   MYEAR STATN          SAMPLING_PLATFORM PROJ  ORDERER SHIPC CRUISE_NO DATE_TIME
 ##   &lt;dbl&gt; &lt;chr&gt;          &lt;chr&gt;             &lt;chr&gt; &lt;chr&gt;   &lt;chr&gt;     &lt;dbl&gt; &lt;chr&gt;    
@@ -779,7 +819,7 @@ Project</a>. Happy analyzing!</p>
 <pre><code>## To cite package &#39;iRfcb&#39; in publications use:
 ## 
 ##   Anders Torstensson (2026). iRfcb: Tools for Managing Imaging
-##   FlowCytobot (IFCB) Data. R package version 0.8.1.
+##   FlowCytobot (IFCB) Data. R package version 0.9.0.
 ##   https://CRAN.R-project.org/package=iRfcb
 ## 
 ## A BibTeX entry for LaTeX users is
@@ -788,7 +828,7 @@ Project</a>. Happy analyzing!</p>
 ##     title = {iRfcb: Tools for Managing Imaging FlowCytobot (IFCB) Data},
 ##     author = {Anders Torstensson},
 ##     year = {2026},
-##     note = {R package version 0.8.1},
+##     note = {R package version 0.9.0},
 ##     url = {https://CRAN.R-project.org/package=iRfcb},
 ##   }</code></pre>
 </div>

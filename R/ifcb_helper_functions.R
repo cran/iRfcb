@@ -65,23 +65,6 @@ truncate_folder_name <- function(folder_name) {
   sub("_\\d{3}$", "", basename(folder_name))
 }
 
-#' Function to Print the Progress Bar
-#'
-#' This function prints a progress bar to the console to indicate the progress of a process.
-#'
-#' @param current An integer specifying the current progress.
-#' @param total An integer specifying the total steps for the process.
-#' @param bar_width An integer specifying the width of the progress bar. Default is 50.
-#' @noRd
-print_progress <- function(current, total, bar_width = 50) {
-  progress <- current / total
-  complete <- round(progress * bar_width)
-  bar <- paste(rep("=", complete), collapse = "")
-  remaining <- paste(rep(" ", bar_width - complete), collapse = "")
-  cat(sprintf("\r[%s%s] %d%%", bar, remaining, round(progress * 100)))
-  flush.console()
-}
-
 #' Function to Find Matching Feature Files with a General Pattern
 #'
 #' This function finds feature files that match the base name of a given .mat file.
@@ -389,7 +372,7 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
 
   # Check if the zip file exists
   if (!file.exists(zip_file)) {
-    stop("The specified zip file does not exist")
+    cli_abort("The specified zip file does not exist: {.file {zip_file}}")
   }
 
   # Check the size of the zip file
@@ -401,7 +384,7 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
   # Step 0: Check if the zip file is smaller than max_size
   if (zip_file_size <= max_size_bytes) {
     if (!quiet) {
-      message("The zip file is already smaller than the specified max size (", max_size, " MB).")
+      cli_inform("The zip file is already smaller than the specified max size ({max_size} MB).")
     }
     return(invisible(NULL))
   }
@@ -499,8 +482,8 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
   unlink(unzip_dir, recursive = TRUE)
 
   if (!quiet) {
-    message("Successfully created ", length(subfolder_groups), " smaller zip files:")
-    message(paste(created_zip_files, collapse = "\n"))
+    cli_alert_success("Created {length(subfolder_groups)} smaller zip file{?s}:")
+    cli_inform("{.file {created_zip_files}}")
   }
 }
 #' Check Python and Required Modules Availability
@@ -526,10 +509,10 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
 check_python_and_module <- function(modules = "scipy", initialize = FALSE) {
   # Check if Python is available
   if (!reticulate::py_available(initialize = initialize)) {
-    stop(
-      "Python is not available. Please ensure Python is installed and initialized, ",
-      "or see `ifcb_py_install`."
-    )
+    cli_abort(c(
+      "Python is not available.",
+      "i" = "Ensure Python is installed and initialized, or see {.fn ifcb_py_install}."
+    ))
   }
 
   # Discover Python configuration
@@ -545,12 +528,10 @@ check_python_and_module <- function(modules = "scipy", initialize = FALSE) {
 
   # Error if any modules are missing
   if (length(missing_modules) > 0) {
-    stop(
-      "The following Python package(s) are not available: ",
-      paste(sprintf("'%s'", missing_modules), collapse = ", "),
-      ". Please install them in your Python environment, ",
-      "or see `ifcb_py_install`."
-    )
+    cli_abort(c(
+      "The following Python package{?s} {?is/are} not available: {.val {missing_modules}}",
+      "i" = "Install them in your Python environment, or see {.fn ifcb_py_install}."
+    ))
   }
 
   invisible(TRUE)
@@ -596,17 +577,104 @@ install_missing_packages <- function(packages, envname = NULL) {
   missing_packages <- setdiff(packages, installed)
 
   if (length(missing_packages) > 0) {
-    message("Installing missing Python packages: ", paste(missing_packages, collapse = ", "))
+    cli_inform("Installing missing Python package{?s}: {.val {missing_packages}}")
 
     if (is.null(envname)) {
       # Install globally if system Python is used
       reticulate::py_install(missing_packages, pip = TRUE)
     } else {
-      # Install in virtual environment
-      reticulate::virtualenv_install(envname, missing_packages, ignore_installed = TRUE)
+      # Install in virtual environment. `ignore_installed` is left at its default
+      # (FALSE) so that pip resolves dependencies cleanly and replaces conflicting
+      # versions. Using `ignore_installed = TRUE` (pip `--ignore-installed`) would
+      # reinstall transitive dependencies (e.g. numpy/scipy) on top of existing
+      # ones rather than removing them first, which can layer incompatible builds
+      # and corrupt the environment (e.g. when installing `ifcb-features`, whose
+      # `pyifcb` dependency pins exact `scipy`/`numpy`/`pandas` versions).
+      reticulate::virtualenv_install(envname, missing_packages)
     }
   } else {
-    message("All requested packages are already installed.")
+    cli_inform("All requested packages are already installed.")
+  }
+}
+#' Get the Latest Release Tag of a GitHub Repository
+#'
+#' A helper function that queries the GitHub REST API for the latest published
+#' release of a repository and returns its tag name (e.g. `"v1.0.0"`).
+#' If a `GITHUB_PAT` or `GITHUB_TOKEN` environment variable is set, it is used to
+#' authenticate the request and avoid the lower unauthenticated rate limit.
+#'
+#' @param repo Character. The repository in `"owner/name"` form
+#'   (e.g. `"WHOIGit/ifcb-features"`).
+#'
+#' @return Character. The latest release tag name, or `NULL` if it could not be
+#'   determined (e.g. no network, rate limited, or no releases published).
+#' @noRd
+get_latest_github_release <- function(repo) {
+  url <- paste0("https://api.github.com/repos/", repo, "/releases/latest")
+
+  handle <- curl::new_handle()
+  # GitHub requires a User-Agent header on API requests
+  curl::handle_setheaders(handle, "User-Agent" = "iRfcb R package")
+
+  # Use a token if available to avoid the unauthenticated rate limit
+  token <- Sys.getenv("GITHUB_PAT", unset = Sys.getenv("GITHUB_TOKEN"))
+  if (nzchar(token)) {
+    curl::handle_setheaders(handle, "Authorization" = paste("Bearer", token))
+  }
+
+  response <- tryCatch(
+    curl::curl_fetch_memory(url, handle = handle),
+    error = function(e) NULL
+  )
+
+  if (is.null(response) || response$status_code != 200) {
+    return(NULL)
+  }
+
+  content <- tryCatch(
+    jsonlite::fromJSON(rawToChar(response$content)),
+    error = function(e) NULL
+  )
+
+  tag <- content$tag_name
+  if (is.null(tag) || !nzchar(tag)) {
+    return(NULL)
+  }
+
+  tag
+}
+#' Build the pip Install Specifier for WHOI's ifcb-features Package
+#'
+#' A helper that returns the `git+...` pip install specifier for the
+#' `ifcb-features` package at a given git reference. When `features_ref` is
+#' `NULL`, the latest published GitHub release is resolved via
+#' `get_latest_github_release()`; if that cannot be determined, the default
+#' branch is used (with a warning).
+#'
+#' @param features_ref Character or `NULL`. A git reference (release tag, branch,
+#'   or commit) to install. If `NULL`, the latest release is used.
+#'
+#' @return Character. A pip install specifier such as
+#'   `"git+https://github.com/WHOIGit/ifcb-features.git@v1.0.0"`.
+#' @noRd
+resolve_ifcb_features_url <- function(features_ref = NULL) {
+  ref <- features_ref
+  if (is.null(ref)) {
+    ref <- get_latest_github_release("WHOIGit/ifcb-features")
+    if (is.null(ref)) {
+      cli_warn(c(
+        "Could not determine the latest {.pkg ifcb-features} release.",
+        "i" = "Installing from the default branch instead. Set {.arg features_ref} to pin a version."
+      ))
+    } else {
+      cli_inform("Installing {.pkg ifcb-features} release {.val {ref}}.")
+    }
+  }
+
+  if (is.null(ref)) {
+    "git+https://github.com/WHOIGit/ifcb-features.git"
+  } else {
+    paste0("git+https://github.com/WHOIGit/ifcb-features.git@", ref)
   }
 }
 #' Read MATLAB (.mat) Files
@@ -701,8 +769,10 @@ read_class_file <- function(filepath, use_python = FALSE) {
 
   if (ext == "h5") {
     if (!requireNamespace("hdf5r", quietly = TRUE)) {
-      stop("Package 'hdf5r' is required to read .h5 classification files. ",
-           "Install it with: install.packages('hdf5r')")
+      cli_abort(c(
+        "Package {.pkg hdf5r} is required to read {.file .h5} classification files.",
+        "i" = "Install it with {.run install.packages(\"hdf5r\")}"
+      ))
     }
 
     h5file <- hdf5r::H5File$new(filepath, mode = "r")
@@ -861,7 +931,7 @@ process_ifcb_string <- function(ifcb_string, quiet = FALSE) {
 
     } else {
       if (!quiet) {
-        message("Unknown format: ", str)
+        cli_inform("Unknown format: {.val {str}}")
       }
       NA  # Return NA for unknown formats
     }
