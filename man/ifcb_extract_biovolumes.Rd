@@ -14,12 +14,16 @@ ifcb_extract_biovolumes(
   diatom_class = "Bacillariophyceae",
   diatom_include = NULL,
   marine_only = FALSE,
+  diatom_equation = c("large", "all", "auto"),
   threshold = "opt",
   multiblob = FALSE,
   feature_recursive = TRUE,
   class_recursive = TRUE,
   drop_zero_volume = FALSE,
   feature_version = NULL,
+  use_cell_counts = FALSE,
+  single_cell_values = c(-1, 0),
+  carbon_conversion = c("roi", "cell"),
   use_python = FALSE,
   verbose = TRUE,
   mat_folder = deprecated(),
@@ -32,7 +36,10 @@ ifcb_extract_biovolumes(
 
 \item{class_files}{(Optional) A character vector of full paths to classification or manual
 annotation files (\code{.mat}, \code{.h5}, or \code{.csv}), or a single path to a folder
-containing such files.}
+containing such files. Supply a single file format per sample: a sample
+represented twice (e.g. by both a \code{.mat} and a \code{.h5}) would have its ROIs
+counted once per file, so this is rejected with an error naming the
+affected samples.}
 
 \item{custom_images}{(Optional) A character vector of image filenames in the format DYYYYMMDDTHHMMSS_IFCBXXX_ZZZZZ(.png),
 where "XXX" represents the IFCB number and "ZZZZZ" represents the ROI number.
@@ -52,6 +59,24 @@ overriding the boolean result of \code{ifcb_is_diatom}. Default: NULL.}
 
 \item{marine_only}{Logical. If \code{TRUE}, restricts the WoRMS search to marine taxa only. Default: \code{FALSE}.}
 
+\item{diatom_equation}{A character string selecting which Menden-Deuer and Lessard (2000)
+carbon-to-volume relationship to apply to diatoms. \code{"large"} (default) uses the
+large-diatom (> 3000 micron^3) equation (\code{vol2C_lgdiatom}), matching the
+\code{ifcb-analysis} convention. \code{"all"} uses the all-sizes diatom equation
+(\code{vol2C_diatom}), which assigns more carbon to small cells. \code{"auto"}
+(\code{vol2C_diatom_auto}) selects between them per volume, using the
+large-diatom equation above 3000 micron^3 and the all-sizes equation at or
+below it, so each stays inside its calibrated size range. \code{"auto"} needs no
+\code{cell_count} data and is independent of \code{carbon_conversion}. Be aware that the
+two are discontinuous at that boundary (about 190 pgC against 135 pgC), so
+\code{"auto"} makes predicted carbon fall as a cell grows across it; that is why
+it is not the default. \code{"auto"} selects on whatever volume the conversion
+receives, which is the per-cell volume when \code{carbon_conversion = "cell"}.
+Note that biovolume is measured per region of interest (ROI/image), so it is
+not a per-cell volume unless \code{carbon_conversion = "cell"} is used: chains of
+small cells register a large ROI biovolume.
+Non-diatom protists always use \code{vol2C_nondiatom} regardless of this setting.}
+
 \item{threshold}{A character string controlling which classification to use.
 \code{"opt"} (default) uses the threshold-applied classification, where
 predictions below the per-class optimal threshold are labeled
@@ -67,6 +92,30 @@ class without any threshold applied.}
 \item{drop_zero_volume}{Logical. If \code{TRUE}, rows where \code{Biovolume} equals zero (e.g., artifacts such as smudges on the flow cell) are removed. Default: \code{FALSE}.}
 
 \item{feature_version}{Optional numeric or character version to filter feature files by (e.g. 2 for "_v2"). Default is NULL (no filtering).}
+
+\item{use_cell_counts}{Logical. If \code{TRUE}, reads the optional per-ROI \code{cell_count}
+data stored by the diatom chain counter in \code{.mat}/\code{.h5}/\code{.csv} classification files and
+adds \code{cell_count} (raw) and \code{cell_count_resolved} (resolved abundance) columns to the
+output. Only supported with automated \code{class_files}; not with manual files
+or \code{custom_images}. Default: \code{FALSE}.}
+
+\item{single_cell_values}{Integer vector of \code{cell_count} values that should be treated
+as a single cell when resolving \code{cell_count_resolved}. Default is \code{c(-1, 0)}, i.e. ROIs that
+were not counted (\code{-1}) and ROIs where no cells were detected (\code{0}) each count as one
+cell. Values not listed are used verbatim. Only used when \code{use_cell_counts = TRUE}.}
+
+\item{carbon_conversion}{A character string controlling how the Menden-Deuer and
+Lessard (2000) relationships are applied. \code{"roi"} (default) applies the
+selected equation once to the whole ROI biovolume, matching the
+\code{ifcb-analysis} convention and reproducing previous results exactly.
+\code{"cell"} divides the ROI biovolume by the resolved cell count, applies
+the equation to that per-cell volume, and multiplies back by the count,
+which is how the relationships are defined (\verb{log pgC cell^-1}). Requires
+\code{use_cell_counts = TRUE}. \code{carbon_pg} remains a per-ROI total in both
+cases, not carbon per cell. ROIs holding a single cell, ROIs that were
+never chain-counted, and ROIs from files carrying no \code{cell_count} data
+are all converted as one cell, so only ROIs with \code{cell_count >= 2}
+change.}
 
 \item{use_python}{Logical. If \code{TRUE}, attempts to read \code{.mat} files using a Python-based method (\code{SciPy}). Default: \code{FALSE}.}
 
@@ -90,6 +139,8 @@ A data frame containing:
 \item \code{class}: The identified taxonomic class.
 \item \code{biovolume_um3}: Computed biovolume in cubic micrometers.
 \item \code{carbon_pg}: Estimated carbon content in picograms.
+\item \code{cell_count}, \code{cell_count_resolved} (only when \code{use_cell_counts = TRUE}): the raw per-ROI
+cell count and the resolved number of cells used for abundance.
 }
 }
 \description{
@@ -110,7 +161,24 @@ depending on whether the class is identified as a diatom.
 \item \strong{MAT File Processing:}
 \itemize{
 \item If \code{use_python = TRUE}, the function reads \code{.mat} files using \code{ifcb_read_mat()} (requires Python + \code{SciPy}).
-\item Otherwise, it falls back to \code{R.matlab::readMat()}.
+\item Otherwise, it reads \code{.mat} files with the default R reader.
+}
+\item \strong{Per-cell carbon conversion:}
+\itemize{
+\item The Menden-Deuer and Lessard (2000) relationships are fitted per cell
+(\verb{log pgC cell^-1 = log a + b * log V}), but an IFCB biovolume describes a
+whole region of interest, which for a chain-forming diatom is the whole
+chain. Every one of these relationships has \code{b < 1}, so applying one to an
+aggregated chain volume returns less carbon than applying it per cell and
+summing. The two differ by a factor of \code{n^(1-b)}: about 1.28 for an
+8-cell chain and 1.43 for 20 cells under the large-diatom equation.
+\item \code{carbon_conversion = "cell"} divides the ROI biovolume evenly among the
+counted cells, which assumes the cells in a chain are of similar size.
+\item It further assumes the ROI biovolume is cell volume. This is weakest for
+\emph{Chaetoceros}, whose setae add to the measured ROI biovolume without being
+cell material, so the per-cell volume is overestimated and per-cell carbon
+is biased high; whole-ROI conversion biases it low instead. Neither is
+corrected here.
 }
 }
 }
@@ -143,7 +211,9 @@ print(biovolume_df_custom)
 Menden-Deuer Susanne, Lessard Evelyn J., (2000), Carbon to volume relationships for dinoflagellates, diatoms, and other protist plankton, Limnology and Oceanography, 45(3), 569-579, doi: 10.4319/lo.2000.45.3.0569.
 
 Sosik, H. M. and Olson, R. J. (2007), Automated taxonomic classification of phytoplankton sampled with imaging-in-flow cytometry. Limnol. Oceanogr: Methods 5, 204–216.
+
+Groves, G. J. J., Arthur, G., Bresnan, E., Whyte, C., Arce, P. and Davidson, K. (2026), Automatic enumeration of chains of marine diatoms using "You Only Look Once" - a machine learning approach. Journal of Plankton Research, 48(2), fbaf064, doi: 10.1093/plankt/fbaf064.
 }
 \seealso{
-\code{\link{ifcb_read_features}} \code{\link{ifcb_is_diatom}} \url{https://www.marinespecies.org/}
+\code{\link{ifcb_read_features}} \code{\link{ifcb_is_diatom}} \code{\link{ifcb_summarize_cell_counts}} \url{https://github.com/nodc-sweden/ifcb-pytorch-classify} \url{https://www.marinespecies.org/}
 }

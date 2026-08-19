@@ -21,22 +21,49 @@ ifcb_py_install(
 
 \item{features}{Logical. If \code{TRUE}, additionally installs the WHOI \code{ifcb-features}
 package (\url{https://github.com/WHOIGit/ifcb-features}) from GitHub, together
-with its dependencies (\code{pyifcb}, \code{phasepack}, \code{scikit-image}, \code{scikit-learn}).
+with its dependencies (a raw-data reader, \code{phasepack}, \code{scikit-image},
+\code{scikit-learn}).
 This is required by \code{ifcb_extract_features()}. Default is \code{FALSE} to keep the
 default environment lightweight. When installing into an existing virtual
 environment, the (slow) install is skipped if \code{ifcb-features} already imports
-successfully, unless \code{features_ref} is given.
-Installation requires binary wheels for all of \code{pyifcb}'s dependencies
-(notably \code{h5py}); if no wheel is available for your Python version,
-installation will fail. See \url{https://github.com/WHOIGit/ifcb-features}
-for current Python version requirements.}
+successfully, unless \code{features_ref} is given.}
 
 \item{features_ref}{A character string specifying which git reference (release
 tag, branch, or commit) of \code{ifcb-features} to install when \code{features = TRUE}.
 If \code{NULL} (default), the latest published GitHub release is installed, which
 is more stable than the actively developed default branch. Use
 \code{features_ref = "main"} to install the latest development commit, or a tag
-such as \code{"v1.0.0"} to pin a specific version.}
+such as \code{"v1.0.0"} to pin a specific version.
+
+The choice of reference determines which raw-data reader is installed:
+\code{ifcb-features} v1.1.0 and later depend on \code{ifcbkit}, while v1.0.0 and
+earlier depend on \code{pyifcb}. \code{iRfcb} supports both, so either reference
+works and the two readers may coexist in one environment. The feature code
+itself is unchanged between these releases, so the choice does not in
+itself affect how a region of interest is measured, and for the D-style
+bins produced by current instruments the two readers agree. They differ for
+older I-style bins, which \code{ifcbkit} stitches and \code{pyifcb} does not, and on
+ROIs with a zero height; see \code{\link[=ifcb_extract_features]{ifcb_extract_features()}}, whose \code{backend}
+argument pins a reader when both are installed.
+
+The reference does, however, decide which \code{numpy} version is installed, and
+that changes how a degenerate (collinear) blob is measured. Pinning
+\code{"v1.0.0"} pulls in \code{pyifcb}, whose dependencies resolve \code{numpy} to below
+2.3, where \code{numpy.linalg.eig()} returns real eigenvalues and such a blob is
+reported as \code{NaN} in the \code{Eccentricity}, \code{MajorAxisLength} and
+\code{MinorAxisLength} columns. The \code{ifcbkit}-based releases leave \code{numpy}
+unconstrained, so a current install measures the same blob as \code{0}, matching
+upstream \code{ifcb-features}. Pin \code{"v1.0.0"}, or \code{numpy < 2.3}, to reproduce a
+run made before \code{iRfcb} 0.10.0; see \code{\link[=ifcb_extract_features]{ifcb_extract_features()}}.
+
+Note that installing v1.0.0 or earlier pulls in \code{pyifcb}, which requires
+binary wheels for \code{h5py} (available for Python 3.10-3.13). Installation
+fails on Python versions without such a wheel. The \code{ifcbkit}-based
+releases have no such constraint and require only Python >= 3.10.
+
+Whichever reference is used, \code{scikit-image} is constrained to \verb{< 0.28},
+because \code{ifcb-features} calls morphology functions that are scheduled for
+removal in that release.}
 }
 \value{
 No return value. This function is called for its side effect of configuring the Python environment.

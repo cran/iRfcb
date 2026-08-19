@@ -12,13 +12,16 @@ ifcb_extract_features(
   parallel = FALSE,
   n_cores = NULL,
   overwrite = FALSE,
+  feature_tag = c("features", "fea"),
+  multiblob = FALSE,
+  backend = NULL,
   verbose = TRUE
 )
 }
 \arguments{
 \item{data_folder}{The path to a directory containing raw IFCB data
 (\code{.roi}, \code{.adc} and \code{.hdr} files). The directory is searched recursively by
-\code{pyifcb}, so nested data structures are supported.}
+the raw-data reader, so nested data structures are supported.}
 
 \item{features_folder}{The path to the directory where the
 \verb{<bin>_features_v4.csv} files will be written. Created if it does not exist.}
@@ -41,6 +44,27 @@ workers are used. Ignored when \code{parallel = FALSE}.}
 \item{overwrite}{A logical indicating whether to overwrite existing feature
 and blob files. If \code{FALSE} (default), bins whose outputs already exist are
 skipped.}
+
+\item{feature_tag}{A string controlling the token between the bin lid and the
+version in the feature file name. \code{"features"} (default) writes
+\verb{<bin>_features_v4.csv} (the upstream \code{ifcb-features} convention);
+\code{"fea"} writes \verb{<bin>_fea_v4.csv}, the name the IFCB Dashboard
+(\code{ifcbdb} / \code{pyifcb}'s \code{FeaturesDirectory}) searches for. Use \code{"fea"} when
+the output is destined for an IFCB Dashboard instance; remember the dataset
+directory there must be registered with product version 4 to match the
+\verb{_v4} suffix. The blob archive name (\verb{<bin>_blobs_v4.zip}) is unaffected.}
+
+\item{multiblob}{A logical indicating whether to additionally write
+\verb{multiblob/<bin>_multiblob_v4.csv} files (per-blob features for regions of
+interest with more than one blob) inside \code{features_folder}. Bins without
+multi-blob ROIs get no sidecar file, as in upstream \code{ifcb-features}.
+Requires \code{ifcb-features} v1.2.0 or later; see Details. Default is \code{FALSE}.}
+
+\item{backend}{An optional string forcing the raw-data reader, either
+\code{"ifcbkit"} or \code{"pyifcb"}. If \code{NULL} (default), the \code{IRFCB_IFCB_BACKEND}
+environment variable is used when set, otherwise the preferred available
+reader (\code{ifcbkit} when both are installed). See Details for the cases in
+which the two readers differ.}
 
 \item{verbose}{A logical indicating whether to print progress messages,
 including a progress bar that advances as each bin is processed.
@@ -68,15 +92,49 @@ This function wraps the \code{extract_slim_features} workflow from the
 Python and the \code{ifcb-features} package must be installed to use this function.
 The required Python packages can be installed in a virtual environment using
 \code{ifcb_py_install(features = TRUE)}, which additionally installs \code{ifcb-features}
-and its dependencies (\code{pyifcb}, \code{phasepack}, \code{scikit-image}, \code{scikit-learn}).
+and its dependencies (a raw-data reader, \code{phasepack}, \code{scikit-image},
+\code{scikit-learn}).
 
-\strong{Python version requirement:} \code{pyifcb} and its dependencies (notably
-\code{h5py}) must be available as binary wheels for your Python version;
-installation will fail if source compilation is required and the build
-environment is incompatible. See
-\url{https://github.com/WHOIGit/ifcb-features} for current Python version
-requirements, and use \code{ifcb_py_install(features = TRUE)} to install into a
-compatible environment.
+\strong{Supported \code{ifcb-features} versions:} raw data is read through whichever
+reader the installed \code{ifcb-features} release provides - \code{ifcbkit} for v1.1.0
+and later, \code{pyifcb} for v1.0.0 and earlier. Both are supported and may be
+installed side by side, with \code{ifcbkit} preferred when both are present. Use
+the \code{backend} argument (or the \code{IRFCB_IFCB_BACKEND} environment variable) to
+force a particular reader.
+
+The feature code itself is unchanged between these releases, so the choice of
+reader does not affect how a region of interest is measured. The readers do
+not agree in every case, however: \code{pyifcb} skips a ROI whose recorded width is
+zero, while \code{ifcbkit} skips one whose width \emph{or} height is zero, and \code{ifcbkit}
+additionally stitches overlapping ROI pairs in older I-style bins, which
+\code{pyifcb} returns separately. For the D-style bins produced by current
+instruments the two agree on ROI numbering and pixel data, and outputs are
+interchangeable; for I-style data, pin a reader with \code{backend} if you need
+results comparable to an earlier run.
+
+\strong{Python version requirement:} \code{ifcb-features} requires Python >= 3.10.
+Installing v1.0.0 or earlier additionally pulls in \code{pyifcb}, which needs a
+binary \code{h5py} wheel (available for Python 3.10-3.13). See
+\url{https://github.com/WHOIGit/ifcb-features} for current requirements, and
+use \code{ifcb_py_install(features = TRUE)} to install into a compatible
+environment.
+
+\strong{Multiblob output:} the slim feature table describes each ROI's largest
+blob (plus \verb{summed*} columns over all blobs). With \code{multiblob = TRUE}, the
+per-blob features of every blob in a multi-blob ROI are additionally written
+to \verb{multiblob/<bin>_multiblob_v4.csv} inside \code{features_folder}, one row per
+blob with \code{roi_number}, \code{blob_number} and 18 morphological columns - the
+sidecar output \code{ifcb-features} introduced in v1.2.0, which is also the
+minimum version required (older releases never compute per-blob rows, and
+the function stops with an error if one is installed; update with
+\code{ifcb_py_install(features = TRUE)}). As upstream, a bin in which no ROI has
+more than one blob gets no sidecar file at all, so the presence of a
+\verb{<bin>_multiblob_v4.csv} means that bin genuinely contains multi-blob ROIs.
+The skip logic accounts for this by reading the \code{numBlobs} column of a
+bin's existing feature CSV to tell whether a sidecar is expected:
+re-running with \code{multiblob = TRUE} over a directory previously extracted
+without it therefore skips the bins with single-blob ROIs only and
+re-extracts just those that need a sidecar, without \code{overwrite = TRUE}.
 
 Bins are processed sequentially by default. When \code{parallel = TRUE}, bins are
 distributed across \code{n_cores} workers, which can substantially reduce runtime
@@ -112,6 +170,24 @@ ifcb_extract_features(
   bins = c("D20220522T003051_IFCB134", "D20220522T000439_IFCB134"),
   parallel = TRUE,
   n_cores = 4
+)
+
+# Write IFCB Dashboard-compatible feature names (<bin>_fea_v4.csv)
+ifcb_extract_features(
+  data_folder = "path/to/data",
+  features_folder = "path/to/features",
+  blobs_folder = "path/to/blobs",
+  feature_tag = "fea"
+)
+
+# Also write per-blob features for multi-blob ROIs
+# (path/to/features/multiblob/<bin>_multiblob_v4.csv;
+# requires ifcb-features >= 1.2.0)
+ifcb_extract_features(
+  data_folder = "path/to/data",
+  features_folder = "path/to/features",
+  blobs_folder = "path/to/blobs",
+  multiblob = TRUE
 )
 }
 

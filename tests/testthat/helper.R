@@ -1,6 +1,8 @@
-# Helper function to create a temporary .mat file with a named classlist object
+# Helper function to create a temporary .mat file with a named classlist object,
+# using the package's native MAT writer (no R.matlab dependency).
 create_temp_mat_file <- function(file_path, classlist) {
-  R.matlab::writeMat(file_path, classlist = classlist) # Ensure 'classlist' is named
+  dir.create(dirname(file_path), showWarnings = FALSE, recursive = TRUE)
+  write_mat_v5(file_path, list(classlist = mat_var_double(classlist)))
 }
 
 # Define the setup function
@@ -68,20 +70,6 @@ create_temp_hdr_from_example <- function(exdir, hdr_file_path) {
   hdr_folder
 }
 
-# Mock the Python function (replace_value_in_classlist)
-mock_replace_value_in_classlist <- function(input_file, output_file, target_value, new_value, column_index) {
-  # Read the input .mat file
-  mat_contents <- R.matlab::readMat(input_file)
-  classlist <- mat_contents$classlist
-
-  # Replace target_value with new_value in the specified column
-  mask <- classlist[, column_index + 1] == target_value # Adjust for 1-based indexing in R
-  classlist[mask, column_index + 1] <- new_value
-
-  # Write the modified contents to the output .mat file
-  R.matlab::writeMat(output_file, classlist = classlist)
-}
-
 # Cache for Python package availability (avoids repeated slow py_list_packages calls)
 .py_pkg_cache <- new.env(parent = emptyenv())
 
@@ -100,8 +88,13 @@ mock_replace_value_in_classlist <- function(input_file, output_file, target_valu
     .py_pkg_cache[[pkg]] <- FALSE
     testthat::skip(paste(pkg, "not available for testing"))
   }
-  available_packages <- reticulate::py_list_packages(python = reticulate::py_discover_config()$python)
-  .py_pkg_cache[[pkg]] <- pkg %in% available_packages$package
+  # Probe the import, exactly as the code under test does (scipy_available()).
+  # py_list_packages() asks the environment manager instead, and on a conda
+  # environment that listing can omit an installed, importable module - which
+  # would skip every scipy test on precisely the setup the 0.10.0 probe fix
+  # targets.
+  .py_pkg_cache[[pkg]] <- isTRUE(tryCatch(reticulate::py_module_available(pkg),
+                                          error = function(e) FALSE))
   if (!.py_pkg_cache[[pkg]])
     testthat::skip(paste(pkg, "not available for testing"))
 }
@@ -127,8 +120,12 @@ skip_if_no_ifcb_features <- function() {
   if (!reticulate::py_available(initialize = TRUE)) {
     testthat::skip("Python not available for testing")
   }
-  if (!reticulate::py_module_available("ifcb_features") ||
-      !reticulate::py_module_available("ifcb")) {
+  # The raw-data reader is 'ifcbkit' for ifcb-features >= 1.1.0 and 'ifcb'
+  # (pyifcb) for earlier releases; either is enough to run the tests.
+  has_reader <- reticulate::py_module_available("ifcbkit") ||
+    reticulate::py_module_available("ifcb")
+
+  if (!reticulate::py_module_available("ifcb_features") || !has_reader) {
     testthat::skip("ifcb-features not available for testing")
   }
 }

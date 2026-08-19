@@ -112,12 +112,14 @@ print(run_time)
 
 Morphological features can be computed directly from raw IFCB data in R using the WHOI [`ifcb-features`](https://github.com/WHOIGit/ifcb-features) Python package, without running the MATLAB [`ifcb-analysis`](https://github.com/hsosik/ifcb-analysis) toolbox. The `ifcb_extract_features()` function computes the "slim" feature set (version 4) and binary blob masks for each bin, writing a `<bin>_features_v4.csv` table and a `<bin>_blobs_v4.zip` archive to separate, user-specified folders.
 
-This requires the optional `ifcb-features` package, which is installed alongside its dependencies (`pyifcb`, `phasepack`, `scikit-image`, `scikit-learn`) by passing `features = TRUE` to `ifcb_py_install()`:
+This requires the optional `ifcb-features` package, which is installed alongside its dependencies (a raw-data reader, `phasepack`, `scikit-image`, `scikit-learn`) by passing `features = TRUE` to `ifcb_py_install()`:
 
 ```{r, eval=FALSE}
 # Install the Python environment including ifcb-features
 ifcb_py_install(features = TRUE)
 ```
+
+By default the latest published `ifcb-features` release is installed. Releases from v1.1.0 and later read raw data with [`ifcbkit`](https://github.com/WHOIGit/ifcbkit), while v1.0.0 and earlier use [`pyifcb`](https://github.com/joefutrelle/pyifcb); `iRfcb` supports both, and a specific release can be pinned with `features_ref` (e.g. `features_ref = "v1.0.0"`). The feature code is unchanged between these releases, so the choice does not affect how a region of interest is measured, and the two readers agree for the D-style bins produced by current instruments. They differ for older I-style bins, where `ifcbkit` stitches overlapping region-of-interest pairs that `pyifcb` returns separately; `ifcb_extract_features(backend = ...)` pins a reader when both are installed.
 
 Extract features and blobs from all bins found in a data folder. Existing outputs are skipped unless `overwrite = TRUE`, so the call can be re-run to resume an interrupted extraction. Set `parallel = TRUE` to distribute bins across worker processes:
 
@@ -182,7 +184,7 @@ To extract annotated images or classified results from MATLAB files, please see 
 
 ## Classify IFCB Images
 
-IFCB images can be classified directly in R using a CNN model served by a [Gradio](https://www.gradio.app/) application. By default, the classification functions use an instance hosted on the SciLifeLab Serve platform (`https://ifcb.serve.scilifelab.se`). A free example Space is also available on Hugging Face (`https://irfcb-classify.hf.space`); it has limited resources and is intended for testing and demonstration purposes. For large-scale or production classification, we recommend deploying your own instance of the [IFCB Classification App](https://github.com/EuropeanIFCBGroup/ifcb-inference-app) with your own model and passing its URL via the `gradio_url` argument.
+IFCB images can be classified directly in R using a CNN model served by a [Gradio](https://gradio.app/) application. By default, the classification functions use an instance hosted on the SciLifeLab Serve platform (`https://ifcb.serve.scilifelab.se`). A free example Space is also available on Hugging Face (`https://irfcb-classify.hf.space`); it has limited resources and is intended for testing and demonstration purposes. For large-scale or production classification, we recommend deploying your own instance of the [IFCB Classification App](https://github.com/EuropeanIFCBGroup/ifcb-inference-app) with your own model and passing its URL via the `gradio_url` argument.
 
 ### Available Models
 
@@ -240,7 +242,7 @@ ifcb_save_classification(
 )
 # Creates: output/D20230314T001205_IFCB134_class.h5
 
-# MAT - IFCB Dashboard v1 format (requires Python with scipy)
+# MAT - IFCB Dashboard v1 format
 ifcb_save_classification(
   "data/data/2023/D20230314/D20230314T001205_IFCB134.roi",
   output_folder = "output",
@@ -283,7 +285,7 @@ print(worms_records)
 
 ### Check whether a class name is a diatom
 
-This function takes a list of taxa names, cleans them, retrieves their corresponding classification records from WoRMS, and checks if they belong to the specified diatom class. The function only uses the first name (genus name) of each taxa for classification. This function can be useful for converting biovolumes to carbon according to Menden-Deuer and Lessard (2000). See `vol2C_nondiatom()` and `vol2C_lgdiatom()` for carbon calculations (not included in NAMESPACE).
+This function takes a list of taxa names, cleans them, retrieves their corresponding classification records from WoRMS, and checks if they belong to the specified diatom class. The function only uses the first name (genus name) of each taxa for classification. This function can be useful for converting biovolumes to carbon according to Menden-Deuer and Lessard (2000). See `vol2C_diatom()`, `vol2C_lgdiatom()`, and `vol2C_nondiatom()` for the carbon conversions; `ifcb_extract_biovolumes()` and `ifcb_summarize_biovolumes()` use these internally and let you choose the diatom relationship via the `diatom_equation` argument.
 
 ```{r}
 # Read class2use file and select five taxa

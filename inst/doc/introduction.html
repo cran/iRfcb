@@ -469,12 +469,25 @@ writing a <code>&lt;bin&gt;_features_v4.csv</code> table and a
 <code>&lt;bin&gt;_blobs_v4.zip</code> archive to separate,
 user-specified folders.</p>
 <p>This requires the optional <code>ifcb-features</code> package, which
-is installed alongside its dependencies (<code>pyifcb</code>,
+is installed alongside its dependencies (a raw-data reader,
 <code>phasepack</code>, <code>scikit-image</code>,
 <code>scikit-learn</code>) by passing <code>features = TRUE</code> to
 <code>ifcb_py_install()</code>:</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># Install the Python environment including ifcb-features</span></span>
 <span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="fu">ifcb_py_install</span>(<span class="at">features =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>By default the latest published <code>ifcb-features</code> release is
+installed. Releases from v1.1.0 and later read raw data with <a href="https://github.com/WHOIGit/ifcbkit"><code>ifcbkit</code></a>,
+while v1.0.0 and earlier use <a href="https://github.com/joefutrelle/pyifcb"><code>pyifcb</code></a>;
+<code>iRfcb</code> supports both, and a specific release can be pinned
+with <code>features_ref</code>
+(e.g. <code>features_ref = &quot;v1.0.0&quot;</code>). The feature code is
+unchanged between these releases, so the choice does not affect how a
+region of interest is measured, and the two readers agree for the
+D-style bins produced by current instruments. They differ for older
+I-style bins, where <code>ifcbkit</code> stitches overlapping
+region-of-interest pairs that <code>pyifcb</code> returns separately;
+<code>ifcb_extract_features(backend = ...)</code> pins a reader when
+both are installed.</p>
 <p>Extract features and blobs from all bins found in a data folder.
 Existing outputs are skipped unless <code>overwrite = TRUE</code>, so
 the call can be re-run to resume an interrupted extraction. Set
@@ -584,11 +597,10 @@ please see the <code>vignette(&quot;image-export-tutorial&quot;)</code> and
 <div id="classify-ifcb-images" class="section level2">
 <h2>Classify IFCB Images</h2>
 <p>IFCB images can be classified directly in R using a CNN model served
-by a <a href="https://www.gradio.app/">Gradio</a> application. By
-default, the classification functions use an instance hosted on the
-SciLifeLab Serve platform
-(<code>https://ifcb.serve.scilifelab.se</code>). A free example Space is
-also available on Hugging Face
+by a <a href="https://gradio.app/">Gradio</a> application. By default,
+the classification functions use an instance hosted on the SciLifeLab
+Serve platform (<code>https://ifcb.serve.scilifelab.se</code>). A free
+example Space is also available on Hugging Face
 (<code>https://irfcb-classify.hf.space</code>); it has limited resources
 and is intended for testing and demonstration purposes. For large-scale
 or production classification, we recommend deploying your own instance
@@ -656,7 +668,7 @@ formats are supported via the <code>format</code> argument:</p>
 <span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>)</span>
 <span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a><span class="co"># Creates: output/D20230314T001205_IFCB134_class.h5</span></span>
 <span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a></span>
-<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="co"># MAT - IFCB Dashboard v1 format (requires Python with scipy)</span></span>
+<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="co"># MAT - IFCB Dashboard v1 format</span></span>
 <span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a><span class="fu">ifcb_save_classification</span>(</span>
 <span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a>  <span class="st">&quot;data/data/2023/D20230314/D20230314T001205_IFCB134.roi&quot;</span>,</span>
 <span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>  <span class="at">output_folder =</span> <span class="st">&quot;output&quot;</span>,</span>
@@ -725,9 +737,12 @@ their corresponding classification records from WoRMS, and checks if
 they belong to the specified diatom class. The function only uses the
 first name (genus name) of each taxa for classification. This function
 can be useful for converting biovolumes to carbon according to
-Menden-Deuer and Lessard (2000). See <code>vol2C_nondiatom()</code> and
-<code>vol2C_lgdiatom()</code> for carbon calculations (not included in
-NAMESPACE).</p>
+Menden-Deuer and Lessard (2000). See <code>vol2C_diatom()</code>,
+<code>vol2C_lgdiatom()</code>, and <code>vol2C_nondiatom()</code> for
+the carbon conversions; <code>ifcb_extract_biovolumes()</code> and
+<code>ifcb_summarize_biovolumes()</code> use these internally and let
+you choose the diatom relationship via the <code>diatom_equation</code>
+argument.</p>
 <div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="co"># Read class2use file and select five taxa</span></span>
 <span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a>class2use <span class="ot">&lt;-</span> <span class="fu">ifcb_get_mat_variable</span>(<span class="st">&quot;data/config/class2use.mat&quot;</span>)[<span class="dv">10</span><span class="sc">:</span><span class="dv">15</span>]</span>
 <span id="cb32-3"><a href="#cb32-3" tabindex="-1"></a></span>
@@ -778,8 +793,8 @@ delivery format. An example submission is also provided in
 <span id="cb36-3"><a href="#cb36-3" tabindex="-1"></a></span>
 <span id="cb36-4"><a href="#cb36-4" tabindex="-1"></a><span class="co"># Print column names</span></span>
 <span id="cb36-5"><a href="#cb36-5" tabindex="-1"></a><span class="fu">print</span>(shark_colnames)</span></code></pre></div>
-<pre><code>## # A tibble: 0 × 67
-## # ℹ 67 variables: MYEAR &lt;dbl&gt;, STATN &lt;chr&gt;, SAMPLING_PLATFORM &lt;chr&gt;,
+<pre><code>## # A tibble: 0 × 68
+## # ℹ 68 variables: MYEAR &lt;dbl&gt;, STATN &lt;chr&gt;, SAMPLING_PLATFORM &lt;chr&gt;,
 ## #   PROJ &lt;chr&gt;, ORDERER &lt;chr&gt;, SHIPC &lt;chr&gt;, CRUISE_NO &lt;dbl&gt;, DATE_TIME &lt;dbl&gt;,
 ## #   SDATE &lt;date&gt;, STIME &lt;time&gt;, TIMEZONE &lt;chr&gt;, LATIT &lt;dbl&gt;, LONGI &lt;dbl&gt;,
 ## #   POSYS &lt;chr&gt;, WADEP &lt;lgl&gt;, MPROG &lt;chr&gt;, MNDEP &lt;dbl&gt;, MXDEP &lt;dbl&gt;,
@@ -791,7 +806,7 @@ delivery format. An example submission is also provided in
 <span id="cb38-3"><a href="#cb38-3" tabindex="-1"></a></span>
 <span id="cb38-4"><a href="#cb38-4" tabindex="-1"></a><span class="co"># Print the SHARK data submission example</span></span>
 <span id="cb38-5"><a href="#cb38-5" tabindex="-1"></a><span class="fu">print</span>(shark_example)</span></code></pre></div>
-<pre><code>## # A tibble: 5 × 67
+<pre><code>## # A tibble: 5 × 68
 ##   MYEAR STATN          SAMPLING_PLATFORM PROJ  ORDERER SHIPC CRUISE_NO DATE_TIME
 ##   &lt;dbl&gt; &lt;chr&gt;          &lt;chr&gt;             &lt;chr&gt; &lt;chr&gt;   &lt;chr&gt;     &lt;dbl&gt; &lt;chr&gt;    
 ## 1  2022 RV_FB_D202207… IFCB              IFCB… SMHI    77SE         12 2.02e+15 
@@ -799,13 +814,13 @@ delivery format. An example submission is also provided in
 ## 3  2022 RV_FB_D202207… IFCB              IFCB… SMHI    77SE         12 2.02e+15 
 ## 4  2022 RV_FB_D202207… IFCB              IFCB… SMHI    77SE         12 2.02e+15 
 ## 5  2022 RV_FB_D202207… SveaFB            IFCB… SMHI    77SE         12 2.02e+15 
-## # ℹ 59 more variables: SDATE &lt;date&gt;, STIME &lt;time&gt;, TIMEZONE &lt;chr&gt;, LATIT &lt;dbl&gt;,
+## # ℹ 60 more variables: SDATE &lt;date&gt;, STIME &lt;time&gt;, TIMEZONE &lt;chr&gt;, LATIT &lt;dbl&gt;,
 ## #   LONGI &lt;dbl&gt;, POSYS &lt;chr&gt;, WADEP &lt;lgl&gt;, MPROG &lt;chr&gt;, MNDEP &lt;dbl&gt;,
 ## #   MXDEP &lt;dbl&gt;, SLABO &lt;chr&gt;, ACKR_SMP &lt;chr&gt;, SMTYP &lt;chr&gt;, PDMET &lt;chr&gt;,
 ## #   SMVOL &lt;dbl&gt;, METFP &lt;chr&gt;, IFCBNO &lt;chr&gt;, SMPNO &lt;chr&gt;, LATNM &lt;chr&gt;,
 ## #   SFLAG &lt;chr&gt;, LATNM_SFLAG &lt;chr&gt;, TRPHY &lt;chr&gt;, APHIA_ID &lt;dbl&gt;,
-## #   IMAGE_VERIFICATION &lt;chr&gt;, VERIFIED_BY &lt;lgl&gt;, COUNT &lt;dbl&gt;, ABUND &lt;dbl&gt;,
-## #   BIOVOL &lt;dbl&gt;, C_CONC &lt;dbl&gt;, QFLAG &lt;lgl&gt;, COEFF &lt;dbl&gt;, CLASS_NAME &lt;chr&gt;, …</code></pre>
+## #   IMAGE_VERIFICATION &lt;chr&gt;, VERIFIED_BY &lt;lgl&gt;, COUNT &lt;dbl&gt;,
+## #   IMAGE_COUNT &lt;dbl&gt;, ABUND &lt;dbl&gt;, BIOVOL &lt;dbl&gt;, C_CONC &lt;dbl&gt;, QFLAG &lt;lgl&gt;, …</code></pre>
 <p>This concludes this tutorial for the <code>iRfcb</code> package. For
 additional guides—such as quality control of IFCB data, data sharing,
 and integration with MATLAB—please refer to the other tutorials
@@ -819,7 +834,7 @@ Project</a>. Happy analyzing!</p>
 <pre><code>## To cite package &#39;iRfcb&#39; in publications use:
 ## 
 ##   Anders Torstensson (2026). iRfcb: Tools for Managing Imaging
-##   FlowCytobot (IFCB) Data. R package version 0.9.0.
+##   FlowCytobot (IFCB) Data. R package version 0.10.0.
 ##   https://CRAN.R-project.org/package=iRfcb
 ## 
 ## A BibTeX entry for LaTeX users is
@@ -828,7 +843,7 @@ Project</a>. Happy analyzing!</p>
 ##     title = {iRfcb: Tools for Managing Imaging FlowCytobot (IFCB) Data},
 ##     author = {Anders Torstensson},
 ##     year = {2026},
-##     note = {R package version 0.9.0},
+##     note = {R package version 0.10.0},
 ##     url = {https://CRAN.R-project.org/package=iRfcb},
 ##   }</code></pre>
 </div>

@@ -38,7 +38,10 @@ ifcb_annotate_batch(
 
 \item{adc_folder}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-Use \code{adc_files} instead.}
+Use \code{adc_files} instead, which takes a vector of file paths. This
+rename applies to this function only, and is not a package-wide rename:
+\code{\link[=ifcb_annotate_samples]{ifcb_annotate_samples()}} genuinely takes one directory and keeps
+\code{adc_folder}.}
 }
 \value{
 The function does not return a value. It creates or updates \code{.mat} files in the \code{manual_folder} to
@@ -50,7 +53,7 @@ based on input vector of IFCB image names.
 These \code{.mat} files can be used with the code in the \code{ifcb-analysis} repository (Sosik and Olson 2007).
 }
 \details{
-Python must be installed to use this function. The required python packages can be installed in a virtual environment using \code{ifcb_py_install()}.
+The \code{.mat} files are created and edited directly from R.
 
 If an image belongs to a sample that already has a corresponding manual \code{.mat} file,
 the function updates the class IDs for the specified regions of interest (ROIs) in that file.
@@ -65,9 +68,6 @@ The function assumes that the ADC files are organized in subfolders by year (YYY
 }
 \examples{
 \dontrun{
-# Initialize a python session if not already set up
-ifcb_py_install()
-
 # Annotate two png images with class "Nodularia_spumigena" and update or create manual files
 ifcb_annotate_batch(
   png_images = c("D20230812T162908_IFCB134_01399.png",

@@ -9,15 +9,21 @@ test_that("ifcb_get_mat_variable correctly retrieves a specified variable from a
   # Call the function to get the 'class2use' variable
   classes <- ifcb_get_mat_variable(mat_file, "classifierName")
 
-  # Call the function to get the 'class2use' variable using Python
+  # Check if the retrieved classes are as expected (assuming you know the expected classes)
+  expected_classes <- "Z:\\data\\manual\\Skagerrak-Kattegat\\summary\\results_21May202421May2024"
+  expect_equal(classes[1], expected_classes, info = "Retrieved classes should match expected values")
+})
+
+test_that("ifcb_get_mat_variable returns identical results with the Python reader", {
+  skip_if_no_scipy()
+
+  mat_file <- system.file("exdata/example.mat", package = "iRfcb")
+
+  classes <- ifcb_get_mat_variable(mat_file, "classifierName")
   classes_py <- ifcb_get_mat_variable(mat_file, "classifierName", use_python = TRUE)
 
   # Expect that the .mat data from R and Python are identical
   expect_identical(classes, classes_py)
-
-  # Check if the retrieved classes are as expected (assuming you know the expected classes)
-  expected_classes <- "Z:\\data\\manual\\Skagerrak-Kattegat\\summary\\results_21May202421May2024"
-  expect_equal(classes[1], expected_classes, info = "Retrieved classes should match expected values")
 })
 
 test_that("ifcb_get_mat_variable handles missing variable gracefully", {
@@ -40,8 +46,9 @@ test_that("ifcb_get_mat_variable handles empty MAT file gracefully", {
   temp_dir <- file.path(tempdir(), "ifcb_get_mat_variable")
   empty_mat_file <- file.path(temp_dir, "empty_test_file.mat")
 
-  # Create an empty .mat file
-  R.matlab::writeMat(empty_mat_file, x = list())
+  # Create an empty .mat file (header only, no variables) with the native writer
+  dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  write_mat_v5(empty_mat_file, list())
 
   # Ensure the empty .mat file is created
   expect_true(file.exists(empty_mat_file), info = "Empty .mat file should be created")

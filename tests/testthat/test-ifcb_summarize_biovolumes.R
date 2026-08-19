@@ -104,6 +104,94 @@ test_that("ifcb_summarize_biovolumes works correctly with custom class data", {
   expect_equal(result$carbon_ug_per_liter, 0.52147962)
 })
 
+test_that("ifcb_summarize_biovolumes aborts with use_cell_counts on files without chain data", {
+  # The test .mat classification files do not contain chain-count data, so
+  # requesting chain counts should abort before any WoRMS lookup (offline-safe).
+  expect_error(
+    ifcb_summarize_biovolumes(feature_folder, class_folder, use_cell_counts = TRUE,
+                              verbose = FALSE),
+    "chain-count data"
+  )
+})
+
+test_that("ifcb_summarize_biovolumes computes cell abundance with use_cell_counts", {
+  skip_if_offline()
+  skip_on_cran()
+  skip_if_not_installed("hdf5r")
+  skip_if_resource_unavailable("https://marinespecies.org")
+
+  # Build a synthetic .h5 classification file (carrying cell_count) for the same
+  # sample as the real feature file, so the feature join yields known ROIs. The
+  # feature file holds ROIs 2 and 3.
+  chain_class_dir <- file.path(tempdir(), "ifcb_summarize_biovolumes_chain")
+  dir.create(chain_class_dir, showWarnings = FALSE)
+  h5_path <- file.path(chain_class_dir, "D20220522T003051_IFCB134_class.h5")
+
+  f <- hdf5r::H5File$new(h5_path, mode = "w")
+  cl <- "Mesodinium_rubrum"
+  f[["class_labels"]] <- cl
+  f[["roi_numbers"]] <- c(2L, 3L)
+  f[["output_scores"]] <- matrix(0.9, nrow = 1, ncol = 2)
+  f[["classifier_name"]] <- "test_clf"
+  f[["class_name_auto"]] <- rep(cl, 2)
+  f[["class_name"]] <- rep(cl, 2)
+  f[["thresholds"]] <- 0.5
+  f[["cell_count"]] <- c(2L, 3L)  # neither value is a single-cell marker
+  f$close_all()
+
+  result <- ifcb_summarize_biovolumes(feature_folder, chain_class_dir,
+                                      hdr_folder = hdr_folder,
+                                      use_cell_counts = TRUE, verbose = FALSE)
+
+  expect_s3_class(result, "data.frame")
+  expect_true(all(c("cell_counts", "cell_counts_per_liter") %in% colnames(result)))
+
+  # Two ROIs of the same class; chain counts 2 and 3 -> 5 cells from 2 ROIs
+  expect_equal(nrow(result), 1)
+  expect_equal(result$counts, 2)
+  expect_equal(result$cell_counts, 5)
+  expect_equal(result$ml_analyzed, 2.9812723)
+  expect_equal(result$cell_counts_per_liter, 5 / (2.9812723 / 1000))
+})
+
+test_that("ifcb_summarize_biovolumes skips a dashboard scores .csv in a mixed class folder", {
+  skip_if_offline()
+  skip_on_cran()
+  skip_if_resource_unavailable("https://marinespecies.org")
+
+  # The feature file holds ROIs 2 and 3 for this sample.
+  sample <- "D20220522T003051_IFCB134"
+  label <- data.frame(
+    file_name = sprintf("%s_%05d.png", sample, c(2, 3)),
+    class_name = "Mesodinium_rubrum",
+    class_name_auto = "Mesodinium_rubrum",
+    score = 0.9
+  )
+  # IFCB-Dashboard class_scores export for the same sample: pid + per-class
+  # score columns, no file_name/class_name. Must be ignored, not read.
+  scores <- data.frame(pid = sprintf("%s_%05d", sample, c(2, 3)),
+                       Mesodinium_rubrum = 0.9, Skeletonema_marinoi = 0.1)
+
+  mixed_dir <- file.path(tempdir(), "ifcb_summarize_biovolumes_mixedcsv")
+  label_dir <- file.path(tempdir(), "ifcb_summarize_biovolumes_labelcsv")
+  dir.create(mixed_dir, showWarnings = FALSE)
+  dir.create(label_dir, showWarnings = FALSE)
+  utils::write.csv(label, file.path(mixed_dir, paste0(sample, ".csv")), row.names = FALSE)
+  utils::write.csv(scores, file.path(mixed_dir, paste0(sample, "_class.csv")), row.names = FALSE)
+  utils::write.csv(label, file.path(label_dir, paste0(sample, ".csv")), row.names = FALSE)
+
+  expect_warning(
+    res_mixed <- ifcb_summarize_biovolumes(feature_folder, mixed_dir, hdr_folder = hdr_folder,
+                                           verbose = FALSE),
+    "not a ClassiPyR class file"
+  )
+  res_label <- ifcb_summarize_biovolumes(feature_folder, label_dir, hdr_folder = hdr_folder,
+                                         verbose = FALSE)
+
+  # The scores CSV is ignored, so the mixed folder matches the label-only folder
+  expect_equal(res_mixed, res_label)
+})
+
 test_that("ifcb_summarize_biovolumes handles no class2use file gracefully", {
 
   expect_error(ifcb_summarize_biovolumes(feature_folder, manual_folder, hdr_folder = hdr_folder),
@@ -113,3 +201,25 @@ test_that("ifcb_summarize_biovolumes handles no class2use file gracefully", {
   unlink(temp_dir, recursive = TRUE)
 })
 
+
+test_that("an hdr_folder matching no samples warns instead of aborting the join", {
+  temp_dir <- file.path(tempdir(), "summarize_biovol_nohdr")
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+  unzip(test_path("test_data/test_data.zip"), exdir = temp_dir)
+  feature_folder <- file.path(temp_dir, "test_data/features")
+  class_folder <- file.path(temp_dir, "test_data/class/class2022_v1")
+  empty_hdr <- file.path(temp_dir, "no_hdr_here")
+  dir.create(empty_hdr)
+
+  skip_if_offline()
+  skip_on_cran()
+  skip_if_resource_unavailable("https://marinespecies.org")
+
+  expect_warning(
+    res <- ifcb_summarize_biovolumes(feature_folder, class_folder,
+                                     hdr_folder = empty_hdr, verbose = FALSE),
+    "match the classified samples"
+  )
+  expect_true(all(is.na(res$ml_analyzed)))
+  expect_true(all(is.na(res$counts_per_liter)))
+})

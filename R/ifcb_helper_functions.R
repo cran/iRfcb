@@ -249,13 +249,17 @@ summarize_TBclass <- function(classfile, adhocthresh = NULL, use_python = FALSE)
 #' Convert Biovolume to Carbon for Large Diatoms
 #'
 #' This function converts biovolume in microns^3 to carbon in picograms
-#' for large diatoms (> 2000 micron^3) according to Menden-Deuer and Lessard 2000.
+#' for large diatoms (> 3000 micron^3) according to Menden-Deuer and Lessard 2000.
 #' The formula used is: log pgC cell^-1 = log a + b * log V (um^3),
 #' with log a = -0.933 and b = 0.881 for diatoms > 3000 um^3.
 #'
 #' @param volume A numeric vector of biovolume measurements in microns^3.
 #'
 #' @return A numeric vector of carbon measurements in picograms.
+#'
+#' @seealso \code{\link{vol2C_diatom}} for the all-sizes diatom relationship.
+#'
+#' @references Menden-Deuer Susanne, Lessard Evelyn J., (2000), Carbon to volume relationships for dinoflagellates, diatoms, and other protist plankton, Limnology and Oceanography, 45(3), 569-579, doi: 10.4319/lo.2000.45.3.0569.
 #'
 #' @examples
 #' # Volumes in microns^3
@@ -267,6 +271,43 @@ summarize_TBclass <- function(classfile, adhocthresh = NULL, use_python = FALSE)
 vol2C_lgdiatom <- function(volume) {
   loga <- -0.933
   b <- 0.881
+  logC <- loga + b * log10(volume)
+  carbon <- 10^logC
+  carbon
+}
+#' Convert Biovolume to Carbon for Diatoms (All Sizes)
+#'
+#' This function converts biovolume in microns^3 to carbon in picograms for
+#' diatoms across the full size range according to Menden-Deuer and Lessard 2000.
+#' The formula used is: log pgC cell^-1 = log a + b * log V (um^3),
+#' with log a = -0.541 and b = 0.811.
+#'
+#' This relationship is fit to diatoms of all sizes and assigns a higher carbon
+#' density than \code{\link{vol2C_lgdiatom}} (which is specific to large diatoms
+#' larger than 3000 micron^3). Because the large-diatom equation is intended only
+#' for cells > 3000 micron^3, switching equations at that threshold introduces a
+#' discontinuity: at 3000 micron^3 the all-sizes equation predicts ~190 pgC versus
+#' ~135 pgC for the large-diatom equation. (The two curves themselves only
+#' intersect near 4e5 micron^3.)
+#'
+#' @param volume A numeric vector of biovolume measurements in microns^3.
+#'
+#' @return A numeric vector of carbon measurements in picograms.
+#'
+#' @seealso \code{\link{vol2C_lgdiatom}} for the large-diatom (> 3000 micron^3) relationship.
+#'
+#' @references Menden-Deuer Susanne, Lessard Evelyn J., (2000), Carbon to volume relationships for dinoflagellates, diatoms, and other protist plankton, Limnology and Oceanography, 45(3), 569-579, doi: 10.4319/lo.2000.45.3.0569.
+#'
+#' @examples
+#' # Volumes in microns^3
+#' volume <- c(500, 1000, 2000)
+#'
+#' # Convert biovolume to carbon for diatoms (all sizes)
+#' vol2C_diatom(volume)
+#' @export
+vol2C_diatom <- function(volume) {
+  loga <- -0.541
+  b <- 0.811
   logC <- loga + b * log10(volume)
   carbon <- 10^logC
   carbon
@@ -295,6 +336,98 @@ vol2C_nondiatom <- function(volume) {
   logC <- loga + b * log10(volume)
   carbon <- 10^logC
   carbon
+}
+
+#' Convert Biovolume to Carbon for Diatoms, Choosing the Equation by Volume
+#'
+#' This function converts biovolume in microns^3 to carbon in picograms for
+#' diatoms, selecting between the two Menden-Deuer and Lessard (2000) diatom
+#' relationships element-wise: volumes greater than 3000 micron^3 use the
+#' large-diatom equation (\code{\link{vol2C_lgdiatom}}), and the rest use the
+#' all-sizes equation (\code{\link{vol2C_diatom}}). It backs
+#' `diatom_equation = "auto"` in [ifcb_extract_biovolumes()] and
+#' [ifcb_summarize_biovolumes()], and applies to whatever volume it is handed:
+#' the ROI biovolume under `carbon_conversion = "roi"`, or the per-cell volume
+#' under `carbon_conversion = "cell"`.
+#'
+#' Be aware that the two relationships are not continuous at the 3000 micron^3
+#' boundary: the all-sizes equation predicts about 190 pgC there and the
+#' large-diatom equation about 135 pgC. Selecting between them by volume
+#' therefore makes predicted carbon *drop* by roughly 41% as a cell grows across
+#' the boundary, which is why this is not the default. Use it when keeping each
+#' equation inside its calibrated size range matters more than a monotonic
+#' carbon-to-volume curve.
+#'
+#' @param volume A numeric vector of biovolumes in microns^3.
+#'
+#' @return A numeric vector of carbon content in picograms.
+#'
+#' @seealso \code{\link{vol2C_diatom}} \code{\link{vol2C_lgdiatom}}
+#'
+#' @references Menden-Deuer Susanne, Lessard Evelyn J., (2000), Carbon to volume relationships for dinoflagellates, diatoms, and other protist plankton, Limnology and Oceanography, 45(3), 569-579, doi: 10.4319/lo.2000.45.3.0569.
+#'
+#' @examples
+#' # Volumes in microns^3, spanning the 3000 micron^3 boundary
+#' volume <- c(500, 2000, 5000, 20000)
+#'
+#' # Small volumes use the all-sizes equation, large ones the large-diatom equation
+#' vol2C_diatom_auto(volume)
+#' @export
+vol2C_diatom_auto <- function(volume) {
+  ifelse(volume > 3000, vol2C_lgdiatom(volume), vol2C_diatom(volume))
+}
+
+#' Apply a Carbon Conversion Per Cell Rather Than Per ROI (internal)
+#'
+#' The Menden-Deuer and Lessard (2000) relationships are fitted per cell
+#' (`log pgC cell^-1 = log a + b * log V`), but an IFCB biovolume describes a
+#' whole region of interest, which for a chain-forming diatom is the whole
+#' chain. Because every one of these relationships has `b < 1`, applying one to
+#' an aggregated chain volume returns less carbon than applying it to each cell
+#' and summing: the two differ by a factor `n^(1-b)`.
+#'
+#' @param fun A volume-to-carbon function, e.g. [vol2C_lgdiatom()].
+#' @param cells Either `NULL`, or a numeric vector of per-ROI cell counts the
+#'   same length as the volumes `fun` will be called with.
+#' @return When `cells` is `NULL`, `fun` itself, unchanged. Returning the
+#'   identical object is what guarantees that `carbon_conversion = "roi"`
+#'   reproduces previous results exactly rather than merely closely. Otherwise a
+#'   function computing `n * fun(volume / n)`.
+#' @noRd
+scale_vol2C_per_cell <- function(fun, cells) {
+  force(fun)
+  if (is.null(cells)) {
+    return(fun)
+  }
+  force(cells)
+  function(volume) {
+    # Guard the divisor only. A ROI with no chain data (NA), or one mapped to a
+    # non-positive count because the caller dropped -1 from single_cell_values,
+    # converts as a single cell and so keeps its whole-ROI value. Letting NA
+    # through would reach carbon_pg, which ifcb_summarize_biovolumes() sums with
+    # na.rm = TRUE, quietly under-reporting the class total. This leaves
+    # cell_count_resolved untouched.
+    n <- cells
+    n[is.na(n) | n < 1] <- 1
+    n * fun(volume / n)
+  }
+}
+
+#' Validate the carbon_conversion Argument (internal)
+#'
+#' @param carbon_conversion The value supplied by the user, already passed
+#'   through `match.arg()`.
+#' @param use_cell_counts The value of the caller's `use_cell_counts` argument.
+#' @return `invisible(NULL)`, called for its side effect of aborting.
+#' @noRd
+check_carbon_conversion <- function(carbon_conversion, use_cell_counts) {
+  if (identical(carbon_conversion, "cell") && !isTRUE(use_cell_counts)) {
+    cli_abort(c(
+      "{.arg carbon_conversion = \"cell\"} requires {.arg use_cell_counts = TRUE}.",
+      "i" = "Converting carbon per cell needs the per-ROI {.code cell_count} data, which is only read when {.arg use_cell_counts = TRUE}."
+    ))
+  }
+  invisible(NULL)
 }
 
 #' Retrieve WoRMS Records with Retry Mechanism
@@ -495,7 +628,7 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
 #' @param modules Character vector. Names of the Python modules to check.
 #'   Default is "scipy".
 #' @param initialize Logical. Whether to initialize Python if not already initialized.
-#'   Default is FALSE.
+#'   Default is TRUE.
 #'
 #' @return This function does not return a value. It stops execution if the required
 #'   Python environment is not available.
@@ -506,7 +639,7 @@ split_large_zip <- function(zip_file, max_size = 500, quiet = FALSE) {
 #' check_python_and_module(c("scipy", "pandas", "matplotlib"))
 #' }
 #' @noRd
-check_python_and_module <- function(modules = "scipy", initialize = FALSE) {
+check_python_and_module <- function(modules = "scipy", initialize = TRUE) {
   # Check if Python is available
   if (!reticulate::py_available(initialize = initialize)) {
     cli_abort(c(
@@ -515,16 +648,17 @@ check_python_and_module <- function(modules = "scipy", initialize = FALSE) {
     ))
   }
 
-  # Discover Python configuration
-  py_cfg <- reticulate::py_discover_config()
-
-  # List available packages
-  available_packages <- reticulate::py_list_packages(
-    python = py_cfg$python
-  )
-
-  # Find missing modules
-  missing_modules <- setdiff(modules, available_packages$package)
+  # Ask Python whether each module imports, rather than looking for it in
+  # `reticulate::py_list_packages()`. See scipy_available() below for why that
+  # listing is unreliable: on a conda environment it reports conda's own base
+  # listing, so an installed and importable module can be reported missing and
+  # this would abort on a perfectly good environment.
+  missing_modules <- modules[!vapply(
+    modules,
+    function(m) isTRUE(tryCatch(reticulate::py_module_available(m),
+                                error = function(e) FALSE)),
+    logical(1)
+  )]
 
   # Error if any modules are missing
   if (length(missing_modules) > 0) {
@@ -549,17 +683,45 @@ check_python_and_module <- function(modules = "scipy", initialize = FALSE) {
 #' scipy_available() # Check for Python and 'scipy'
 #' }
 #' @noRd
-scipy_available <- function(initialize = FALSE) {
-  # Check if Python is available
+scipy_available <- function(initialize = TRUE) {
+  # Check if Python is available. Initializing by default is what the callers
+  # need: every one of them guards this behind `use_python &&`, which
+  # short-circuits, so reaching here means the caller explicitly asked for the
+  # Python path. Not initializing meant that in a fresh session, where nothing
+  # has touched Python yet, `py_available(initialize = FALSE)` is FALSE and
+  # `use_python = TRUE` was quietly ignored however well the environment was
+  # set up. Python is still never started for a caller that did not ask for it.
   if (!reticulate::py_available(initialize = initialize)) {
     return(FALSE)
   }
 
-  # Get the list of installed Python packages
-  available_packages <- reticulate::py_list_packages()
-
-  # Check if 'scipy' is installed
-  "scipy" %in% available_packages$package
+  # Ask Python whether it can import scipy, rather than looking for it in
+  # `reticulate::py_list_packages()`. That listing reports what the environment
+  # manager has recorded, and for a conda environment it is conda's own base
+  # listing, in which an installed and perfectly importable scipy can simply be
+  # absent. Every caller guards a Python branch with this, falling back to the
+  # native reader otherwise, so a false negative silently ignored
+  # `use_python = TRUE`. Probing the import answers the question actually being
+  # asked, and is cheaper too: `py_list_packages()` shells out to pip or conda,
+  # while the import is cached by Python after the first call.
+  available <- isTRUE(tryCatch(reticulate::py_module_available("scipy"),
+                               error = function(e) FALSE))
+  if (!available) {
+    # Reaching here means the caller explicitly asked for the Python path
+    # (every call site guards with `use_python &&`), so falling back to the
+    # native reader must be said out loud - `use_python = TRUE` is the
+    # documented way to read a file the R reader refuses. Once per session:
+    # several callers probe per .mat file inside loops.
+    cli_warn(
+      c(
+        "{.code use_python = TRUE} was requested, but Python with {.pkg scipy} is not available.",
+        "i" = "Falling back to the native R reader. Set up Python with {.fn ifcb_py_install}."
+      ),
+      .frequency = "once",
+      .frequency_id = "iRfcb_scipy_unavailable"
+    )
+  }
+  available
 }
 
 #' Install Missing Python Packages
@@ -643,6 +805,27 @@ get_latest_github_release <- function(repo) {
 
   tag
 }
+#' Pip Constraints Installed Alongside ifcb-features
+#'
+#' `ifcb_features` calls several `scikit-image` functions (`binary_closing()`,
+#' `binary_erosion()`, `binary_dilation()`) that are deprecated as of 0.26 and
+#' scheduled for removal in 0.28, at which point importing it would fail.
+#' `ifcb-features` v1.0.0 and earlier were shielded by `pyifcb`, which pinned
+#' `scikit-image==0.24.0`, but v1.1.0 and later leave it unconstrained. The
+#' upper bound keeps installs working until upstream updates those calls, and
+#' is satisfied by the version the older releases pin.
+#'
+#' Upstream renamed those calls in `ifcb-features` PR #16, merged to main
+#' 2026-07-23 but not yet in a tagged release (the latest release, v1.1.1, still
+#' uses the deprecated names). Once the installed release includes that fix the
+#' bound is no longer needed and can be dropped; it is retained for v1.1.1
+#' compatibility.
+#'
+#' @return Character vector of pip specifiers.
+#' @noRd
+ifcb_features_constraints <- function() {
+  "scikit-image<0.28"
+}
 #' Build the pip Install Specifier for WHOI's ifcb-features Package
 #'
 #' A helper that returns the `git+...` pip install specifier for the
@@ -679,29 +862,128 @@ resolve_ifcb_features_url <- function(features_ref = NULL) {
 }
 #' Read MATLAB (.mat) Files
 #'
-#' A helper function to read MATLAB `.mat` files using the `R.matlab::readMat()` package.
-#' Optionally, it can fix variable names during import.
+#' A helper function to read MATLAB v5 `.mat` files using the package's native
+#' pure-R reader (`read_mat_v5()`), with no dependency on Python or external
+#' MATLAB-reader packages. The variable specifications returned by the reader
+#' are flattened to plain R values so the output matches the shape previously
+#' produced by `R.matlab::readMat(fixNames = FALSE)`: numeric variables become
+#' matrices, cell arrays of strings become character vectors, single char
+#' arrays become length-one character vectors, and multi-row char arrays (e.g.
+#' `filelistTB` in ifcb-analysis summary files) become character vectors with
+#' one element per row. MATLAB variable names (which use underscores) are
+#' preserved verbatim.
 #'
 #' @param file_path Character. Path to the `.mat` file.
-#' @param fixNames Logical. If `TRUE`, fixes variable names to be valid R identifiers. Default is `FALSE`.
-#' @return A list containing the data from the `.mat` file, with any nested lists converted to character vectors.
+#' @param fixNames Logical. Retained for backward compatibility only; native
+#'   variable names are already valid R identifiers, so this argument is
+#'   ignored.
+#' @return A named list containing the data from the `.mat` file. Scalar char
+#'   arrays are returned as 1x1 character matrices, matching both the historical
+#'   `R.matlab::readMat()` output and the Python reader `ifcb_read_mat()`, so the
+#'   two backends are interchangeable.
 #' @noRd
 read_mat <- function(file_path, fixNames = FALSE) {
-  # Read the contents of the MAT file
-  mat_contents <- suppressWarnings({R.matlab::readMat(file_path, fixNames = fixNames)})
+  specs <- read_mat_v5(file_path)
 
-  # Iterate through each element of mat_data2 and convert any list to a character vector
-  mat_contents_converted <- lapply(mat_contents, function(x) {
-    # Check if the element is a list
-    if (is.list(x)) {
-      # Flatten the list and convert it to a character vector
-      as.character(unlist(x))
-    } else {
-      # If it's not a list, leave it unchanged
-      x
-    }
+  lapply(specs, function(spec) {
+    switch(spec$type,
+      # Numeric matrices are returned as-is (matrix, dimensions preserved).
+      numeric = spec$data,
+      # Cell arrays of strings collapse to a character vector (column-major),
+      # mirroring the old `as.character(unlist(x))` conversion.
+      cell    = as.character(as.vector(spec$data)),
+      # Single char arrays become a 1x1 character matrix, the shape produced by
+      # R.matlab::readMat() and ifcb_read_mat() (so use_python = TRUE/FALSE
+      # agree). Multi-row char arrays stay a plain character vector, one string
+      # per row, which is also what scipy's chars_as_strings hands the Python
+      # path.
+      char    = if (length(spec$data) > 1L) as.character(spec$data)
+                else matrix(as.character(spec$data), nrow = 1L, ncol = 1L),
+      # Any other type: best-effort flatten to character.
+      as.character(unlist(spec$data))
+    )
   })
-  mat_contents_converted
+}
+#' Resolve Per-ROI Cell Counts for Abundance
+#'
+#' Translates the raw per-ROI `cell_count` values produced by the diatom chain
+#' counter into the cell counts used for abundance calculations. Values listed in
+#' `single_cell_values` are mapped to `1` (a single cell); any other value is
+#' used verbatim as the number of cells. A warning is emitted if negative cell
+#' counts remain after mapping (e.g. when `-1` is removed from
+#' `single_cell_values`), since these would corrupt abundance sums.
+#'
+#' @param cell_count Integer vector of raw per-ROI cell counts.
+#' @param single_cell_values Integer vector of `cell_count` values that should
+#'   be treated as a single cell. Default is `c(-1, 0)`.
+#'
+#' @return Numeric vector of resolved per-ROI cell counts.
+#'
+#' @references Groves, G. J. J., Arthur, G., Bresnan, E., Whyte, C., Arce, P. and Davidson, K. (2026), Automatic enumeration of chains of marine diatoms using "You Only Look Once" - a machine learning approach. Journal of Plankton Research, 48(2), fbaf064, doi: 10.1093/plankt/fbaf064.
+#'
+#' @noRd
+resolve_cell_counts <- function(cell_count, single_cell_values = c(-1, 0)) {
+  cells <- ifelse(cell_count %in% single_cell_values, 1L, cell_count)
+  if (any(cells < 0, na.rm = TRUE)) {
+    cli_warn(c(
+      "Negative cell counts remain after mapping {.arg cell_count}.",
+      "i" = "Add the offending values to {.arg single_cell_values} (which defaults to {.code c(-1, 0)}) to treat them as a single cell."
+    ))
+  }
+  cells
+}
+#' Required columns missing from a `.csv` classification (label) file
+#'
+#' Reads only the header of a `.csv` file and returns the names of the required
+#' ClassiPyR/iRfcb class-file columns (`file_name`, `class_name`) that are absent.
+#' An empty result means the file is a valid class file; a non-empty result names
+#' the missing columns. Unreadable or empty files report both columns missing.
+#'
+#' @param filepath Character. Path to the `.csv` file.
+#'
+#' @return Character vector of missing required column names (empty if valid).
+#'
+#' @noRd
+class_csv_missing_columns <- function(filepath) {
+  header <- tryCatch(
+    colnames(utils::read.csv(filepath, nrows = 0)),
+    error = function(e) character(0)
+  )
+  setdiff(c("file_name", "class_name"), header)
+}
+#' Drop non-class `.csv` files from a list of classification files
+#'
+#' Filters a vector of classification file paths, removing any `.csv` file that is
+#' not a ClassiPyR/iRfcb class (label) file (e.g. an IFCB-Dashboard class_scores
+#' export). `.mat` and `.h5` files pass through untouched. A `cli_warn` names each
+#' skipped file and the columns it is missing. Intended for the folder-listing
+#' path, where a directory may legitimately mix class files with other `.csv`
+#' exports; explicit user-supplied paths are validated (and aborted on) by
+#' `read_class_file()` instead.
+#'
+#' @param class_files Character vector of classification file paths.
+#'
+#' @return The subset of `class_files` that are valid classification files.
+#'
+#' @noRd
+drop_invalid_class_csv <- function(class_files) {
+  is_csv <- tolower(tools::file_ext(class_files)) == "csv"
+  if (!any(is_csv)) {
+    return(class_files)
+  }
+
+  keep <- rep(TRUE, length(class_files))
+  for (i in which(is_csv)) {
+    missing_cols <- class_csv_missing_columns(class_files[i])
+    if (length(missing_cols) > 0) {
+      keep[i] <- FALSE
+      cli_warn(
+        "Skipping {.file {basename(class_files[i])}}: not a ClassiPyR class file (missing {.field {missing_cols}})."
+      )
+    }
+  }
+
+  class_files[keep]
 }
 #' Read Classification File (.mat, .h5, or .csv)
 #'
@@ -710,6 +992,12 @@ read_mat <- function(file_path, fixNames = FALSE) {
 #'
 #' @param filepath Character. Path to the classification file (`.mat`, `.h5`, or `.csv`).
 #' @param use_python Logical. If `TRUE`, uses Python-based reading for `.mat` files. Default is `FALSE`.
+#' @param extra_datasets Character vector of additional `.h5` dataset names (or
+#'   `.csv` column names) to read if present, returned verbatim as named elements
+#'   of the result. Intended as a forward-compatible hook for optional per-ROI or
+#'   per-cell data added by classification pipelines (e.g. future individual cell
+#'   measurements); variable-length datasets are returned as list-columns. Missing
+#'   datasets are silently skipped. Ignored for `.mat` files. Default is `NULL`.
 #'
 #' @return A named list with elements:
 #'   \item{classifierName}{Character. The classifier name.}
@@ -719,13 +1007,39 @@ read_mat <- function(file_path, fixNames = FALSE) {
 #'   \item{TBclass}{Character vector. Winning class per ROI.}
 #'   \item{TBclass_above_threshold}{Character vector. Winning class or "unclassified" if below threshold.}
 #'   \item{TBclass_above_adhocthresh}{Character vector or NULL. Adhoc threshold classes (`.mat` only, NULL for `.h5`/`.csv`).}
+#'   \item{cell_count}{Integer vector or NULL. Optional per-ROI cell counts
+#'     produced by the diatom chain counter, present in `.mat`, `.h5` or `.csv`
+#'     files that were classified with chain counting enabled. `-1` marks ROIs that
+#'     were not counted, `0` marks ROIs that were counted but where no cells were
+#'     detected, and a positive value is the number of cells in the ROI. `NULL` when
+#'     the file does not contain cell-count data.}
+#'   Any names requested via `extra_datasets` that exist in the file are added as
+#'   further elements, read verbatim.
 #'
 #' @noRd
-read_class_file <- function(filepath, use_python = FALSE) {
+read_class_file <- function(filepath, use_python = FALSE, extra_datasets = NULL) {
   ext <- tolower(tools::file_ext(filepath))
 
   if (ext == "csv") {
-    csv_data <- utils::read.csv(filepath)
+    csv_data <- tryCatch(utils::read.csv(filepath), error = function(e) NULL)
+
+    # A directory can legitimately hold .csv files that are not ClassiPyR class
+    # (label) files, e.g. the IFCB-Dashboard class_scores export ({sample}_class.csv
+    # with pid + per-class score columns). Fail clearly rather than dereferencing
+    # missing columns and erroring later in the WoRMS lookup. An unreadable/empty
+    # file is treated as missing both required columns.
+    missing_cols <- if (is.null(csv_data)) {
+      c("file_name", "class_name")
+    } else {
+      setdiff(c("file_name", "class_name"), colnames(csv_data))
+    }
+    if (length(missing_cols) > 0) {
+      cli_abort(c(
+        "{.file {basename(filepath)}} is not a ClassiPyR classification file.",
+        "x" = "Missing required column{?s}: {.field {missing_cols}}.",
+        "i" = "A class file must have per-ROI {.field file_name} and {.field class_name} columns."
+      ))
+    }
 
     # Extract ROI numbers from file_name column (e.g. ..._00001.png -> 1)
     roi_numbers <- as.integer(
@@ -761,8 +1075,20 @@ read_class_file <- function(filepath, use_python = FALSE) {
       TBscores = score_matrix,
       TBclass = tb_class,
       TBclass_above_threshold = csv_data$class_name,
-      TBclass_above_adhocthresh = NULL
+      TBclass_above_adhocthresh = NULL,
+      cell_count = if ("cell_count" %in% colnames(csv_data)) {
+        as.integer(csv_data$cell_count)
+      } else {
+        NULL
+      }
     )
+
+    # Optionally surface any additional requested columns verbatim
+    for (name in extra_datasets) {
+      if (name %in% colnames(csv_data) && is.null(result[[name]])) {
+        result[[name]] <- csv_data[[name]]
+      }
+    }
 
     return(result)
   }
@@ -808,18 +1134,43 @@ read_class_file <- function(filepath, use_python = FALSE) {
       TBscores = t(h5file[["output_scores"]]$read()),
       TBclass = class_auto,
       TBclass_above_threshold = class_threshold,
-      TBclass_above_adhocthresh = NULL
+      TBclass_above_adhocthresh = NULL,
+      cell_count = if (h5file$exists("cell_count")) {
+        as.integer(h5file[["cell_count"]]$read())
+      } else {
+        NULL
+      }
     )
+
+    # Optionally surface any additional requested datasets verbatim
+    for (name in extra_datasets) {
+      if (h5file$exists(name) && is.null(result[[name]])) {
+        result[[name]] <- h5file[[name]]$read()
+      }
+    }
 
     return(result)
   }
 
   # Default: read .mat file
-  if (use_python && scipy_available()) {
+  result <- if (use_python && scipy_available()) {
     ifcb_read_mat(filepath)
   } else {
     read_mat(filepath, fixNames = FALSE)
   }
+
+  # Normalize shapes to match the .h5/.csv branches: MATLAB stores column
+  # vectors as [n, 1] matrices, so flatten roinum and the optional per-ROI
+  # cell_count to plain vectors. Absent fields stay NULL so callers can still
+  # detect the absence of chain-count data.
+  if (!is.null(result$roinum)) {
+    result$roinum <- as.vector(result$roinum)
+  }
+  if (!is.null(result$cell_count)) {
+    result$cell_count <- as.integer(result$cell_count)
+  }
+
+  result
 }
 #' Extract the Class from the First Row of Each worms_records Tibble
 #'

@@ -15,10 +15,13 @@
 #' @param do_compression A logical value indicating whether to compress the .mat file. Default is TRUE.
 #' @param adc_folder `r lifecycle::badge("deprecated")`
 #'
-#'    Use \code{adc_files} instead.
+#'    Use \code{adc_files} instead, which takes a vector of file paths. This
+#'    rename applies to this function only, and is not a package-wide rename:
+#'    [ifcb_annotate_samples()] genuinely takes one directory and keeps
+#'    `adc_folder`.
 #'
 #' @details
-#' Python must be installed to use this function. The required python packages can be installed in a virtual environment using `ifcb_py_install()`.
+#' The `.mat` files are created and edited directly from R.
 #'
 #' If an image belongs to a sample that already has a corresponding manual `.mat` file,
 #' the function updates the class IDs for the specified regions of interest (ROIs) in that file.
@@ -40,9 +43,6 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Initialize a python session if not already set up
-#' ifcb_py_install()
-#'
 #' # Annotate two png images with class "Nodularia_spumigena" and update or create manual files
 #' ifcb_annotate_batch(
 #'   png_images = c("D20230812T162908_IFCB134_01399.png",
@@ -59,9 +59,6 @@ ifcb_annotate_batch <- function(png_images, class, manual_folder, adc_files, cla
                                 manual_output = NULL, manual_recursive = FALSE, unclassified_id = 1,
                                 do_compression = TRUE, adc_folder = deprecated()) {
 
-  # Initialize python check
-  check_python_and_module()
-
   # Ensure that manual folder exists
   if (!dir.exists(manual_folder)) {
     dir.create(manual_folder, recursive = TRUE)
@@ -76,7 +73,16 @@ ifcb_annotate_batch <- function(png_images, class, manual_folder, adc_files, cla
   if (lifecycle::is_present(adc_folder)) {
 
     # Signal the deprecation to the user
-    deprecate_warn("0.5.0", "iRfcb::ifcb_annotate_batch(adc_folder = )", "iRfcb::ifcb_annotate_batch(adc_files = )")
+    deprecate_warn(
+      "0.5.0",
+      "iRfcb::ifcb_annotate_batch(adc_folder = )",
+      "iRfcb::ifcb_annotate_batch(adc_files = )",
+      details = paste(
+        "This affects `ifcb_annotate_batch()` alone, since `adc_files` takes a",
+        "vector of files. `ifcb_annotate_samples()` takes one directory and",
+        "keeps `adc_folder`."
+      )
+    )
 
     # Deal with the deprecated argument for compatibility
     adc_files <- adc_folder
